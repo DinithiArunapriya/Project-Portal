@@ -8,3 +8,4 @@
 # Java / Spring
 **/target/
 *.log
+.vscode/
