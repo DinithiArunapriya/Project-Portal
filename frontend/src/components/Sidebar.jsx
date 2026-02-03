@@ -1,88 +1,97 @@
-import { useNavigate } from "react-router-dom";
+import React from "react";
+import { NavLink } from "react-router-dom";
+import { useAuth } from "../auth/AuthProvider";
+import { usePerms } from "../auth/usePerms";
+import { CAP } from "../auth/permissions";
 
-const Sidebar = () => {
-  const navigate = useNavigate();
-  const loggedInUser = "John Doe"; // Replace with backend username later
+export default function Sidebar({ variant = "desktop", onNavigate }) {
+  const { user, logout } = useAuth();
+  const { can } = usePerms();
 
-  const NavButton = ({ children, onClick }) => (
-    <button
-      style={styles.navBtn}
-      onClick={onClick}
-      onMouseEnter={(e) => (e.target.style.background = "#1F2937")}
-      onMouseLeave={(e) => (e.target.style.background = "transparent")}
+  const Item = ({ to, label, end }) => (
+    <NavLink
+      to={to}
+      end={end}
+      onClick={onNavigate}
+      style={({ isActive }) => ({
+        ...styles.item,
+        ...(isActive ? styles.itemActive : {}),
+      })}
     >
-      {children}
-    </button>
+      {label}
+    </NavLink>
   );
 
   return (
-    <aside style={styles.sidebar}>
-      {/* Logo */}
-      <h3 style={styles.logo}>Project Portal</h3>
-
-      {/* Navigation Buttons */}
-      <div style={styles.navGroup}>
-        <NavButton onClick={() => navigate("/dashboard")}>Dashboard</NavButton>
-        <NavButton onClick={() => navigate("/projects")}>Projects</NavButton>
-        <NavButton onClick={() => navigate("/users")}>Users</NavButton>
-        <NavButton onClick={() => navigate("/tasks")}>My Tasks</NavButton>
-        <NavButton onClick={() => navigate("/reports")}>Reports</NavButton>
-        <NavButton onClick={() => navigate("/settings")}>Settings</NavButton>
-        <NavButton onClick={() => navigate("/admin")}>Admin Panel</NavButton>
+    <aside style={styles.wrap}>
+      <div style={styles.top}>
+        <div style={{ fontWeight: 950 }}>Navigation</div>
+        <div style={{ fontSize: 12, color: "#6b7280" }}>{user?.role}</div>
       </div>
 
-       {/* User info & logout at bottom */}
-      <div style={styles.bottom}>
-        <div style={styles.user}>
-          {/* Optional icon placeholder */}
-          <span style={styles.userIcon}>👤</span> {loggedInUser}
-        </div>
-        <button style={styles.logoutBtn} onClick={() => alert("Logout clicked")}>
-          🔒 Logout
+      <nav style={styles.nav}>
+        <Item to="/dashboard" label="Dashboard" end />
+        <Item to="/projects" label="Projects" />
+        <Item to="/tasks" label="Tasks" />
+
+        {can(CAP.VIEW_USERS) ? <Item to="/users" label="Users" /> : null}
+        {can(CAP.VIEW_REPORTS) ? <Item to="/reports" label="Reports" /> : null}
+        {can(CAP.VIEW_SETTINGS) ? <Item to="/settings" label="Settings" /> : null}
+
+        {can(CAP.VIEW_ADMIN) ? (
+          <>
+            <div style={styles.sectionLabel}>Admin</div>
+            <Item to="/admin" label="Admin Dashboard" />
+            <Item to="/admin/auth-demo" label="Auth Demo" />
+            <Item to="/admin/roles" label="Roles" />
+            <Item to="/admin/email-mappings" label="Email Mappings" />
+          </>
+        ) : null}
+      </nav>
+
+      <div style={styles.footer}>
+        <div style={{ fontSize: 12, color: "#6b7280" }}>Signed in as</div>
+        <div style={{ fontWeight: 900 }}>{user?.name || "User"}</div>
+        <div style={{ fontSize: 12, color: "#6b7280" }}>{user?.email || ""}</div>
+
+        <button style={styles.logoutBtn} onClick={logout}>
+          Logout
         </button>
       </div>
     </aside>
   );
-};
+}
 
 const styles = {
-  sidebar: {
-    width: "240px",
-    background: "#0F172A",
-    color: "#E5E7EB",
-    padding: "24px",
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "space-between",
-    height: "100vh",
-    position: "sticky",
-    top: 0, // keeps sidebar fixed
-  },
-  logo: { marginBottom: "32px", fontSize: "20px", fontWeight: 700, color: "#fff" },
-  navGroup: { display: "flex", flexDirection: "column", gap: "8px" },
-  navBtn: {
-    background: "transparent",
-    border: "none",
-    color: "#E5E7EB",
-    textAlign: "left",
-    padding: "12px",
-    borderRadius: "6px",
-    cursor: "pointer",
-    fontSize: "14px",
-    transition: "all 0.2s",
-  },
-  bottom: { display: "flex", flexDirection: "column", gap: "12px", marginTop: "auto" },
-  user: { fontSize: "14px", fontWeight: 500 },
-  logoutBtn: {
-    background: "#F9FAFB",
-    border: "none",
-    borderRadius: "6px",
-    padding: "8px",
-    fontWeight: 500,
+  wrap: { height: "100%", display: "flex", flexDirection: "column", padding: 12 },
+  top: { padding: "10px 10px 12px", borderBottom: "1px solid #f3f4f6" },
+  nav: { display: "flex", flexDirection: "column", gap: 6, padding: 10 },
+  item: {
+    padding: "10px 12px",
+    borderRadius: 12,
+    textDecoration: "none",
     color: "#111827",
+    fontWeight: 900,
+    border: "1px solid transparent",
+  },
+  itemActive: { background: "#111827", color: "white", borderColor: "#111827" },
+  sectionLabel: {
+    marginTop: 10,
+    marginBottom: 6,
+    padding: "0 12px",
+    fontSize: 12,
+    fontWeight: 900,
+    color: "#6b7280",
+  },
+  footer: { marginTop: "auto", borderTop: "1px solid #f3f4f6", padding: 10 },
+  logoutBtn: {
+    marginTop: 12,
+    width: "100%",
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: "1px solid #e5e7eb",
+    background: "#fff",
+    fontWeight: 900,
     cursor: "pointer",
-    transition: "all 0.2s",
   },
 };
-
-export default Sidebar;

@@ -1,215 +1,386 @@
-import MainLayout from "../layouts/MainLayout";
-import { useState } from "react";
-import { FaUsers, FaClock, FaCheckCircle, FaFileAlt, FaGithub, FaFigma, FaTasks, FaInfoCircle, FaPlus } from "react-icons/fa";
+import React from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNotify } from "../notifications/NotificationProvider";
 
-const ProjectDetails = () => {
-  const [activeTab, setActiveTab] = useState("overview");
+import PageHeader from "../components/PageHeader";
+import Card from "../components/ui/Card";
+import Button from "../components/ui/Button";
+import Table, { Th, Td } from "../components/ui/Table";
+
+import { getProjectById, listProjects } from "../services/projectsApi";
+import {
+  STATUSES,
+  PRIORITIES,
+  listTasks,
+  createTask,
+  updateTask,
+  deleteTask,
+  listUsersForAssign,
+} from "../services/tasksApi";
+
+export default function ProjectDetails() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const notify = useNotify();
+
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState("");
+
+  const [project, setProject] = React.useState(null);
+  const [allProjects, setAllProjects] = React.useState([]);
+
+  const [tasks, setTasks] = React.useState([]);
+  const [users, setUsers] = React.useState([]);
+
+  // Inline create task form state
+  const [title, setTitle] = React.useState("");
+  const [description, setDescription] = React.useState("");
+  const [assigneeId, setAssigneeId] = React.useState("");
+  const [status, setStatus] = React.useState("TODO");
+  const [priority, setPriority] = React.useState("MEDIUM");
+  const [dueDate, setDueDate] = React.useState("");
+
+  const load = React.useCallback(async () => {
+    setLoading(true);
+    setError("");
+
+    try {
+      const [p, t, u, ps] = await Promise.all([
+        getProjectById(id),
+        listTasks(),
+        listUsersForAssign(),
+        listProjects(),
+      ]);
+
+      if (!p) {
+        setProject(null);
+        setTasks([]);
+        setUsers(u || []);
+        setAllProjects(ps || []);
+        setError("Project not found.");
+        return;
+      }
+
+      setProject(p);
+      setAllProjects(ps || []);
+      setUsers(u || []);
+
+      const related = (t || []).filter((x) => (x.projectId || null) === (id || null));
+      setTasks(related);
+    } catch (e) {
+      const msg = e?.message || "Failed to load project details";
+      setError(msg);
+      notify({ title: "Load failed", message: msg, type: "error" });
+    } finally {
+      setLoading(false);
+    }
+  }, [id, notify]);
+
+  React.useEffect(() => {
+    load();
+  }, [load]);
+
+  const projectProgress = React.useMemo(() => {
+    if (!tasks.length) return project?.progress ?? 0;
+    const done = tasks.filter((t) => t.status === "DONE").length;
+    return Math.round((done / tasks.length) * 100);
+  }, [tasks, project]);
+
+  const onCreateTask = async () => {
+    if (!title.trim()) {
+      notify({ title: "Missing title", message: "Task title is required.", type: "error" });
+      return;
+    }
+
+    try {
+      await createTask({
+        projectId: id,
+        title,
+        description,
+        assigneeId: assigneeId || null,
+        status,
+        priority,
+        dueDate: dueDate || null,
+      });
+
+      notify({ title: "Task created", message: "Task added to this project.", type: "success" });
+
+      setTitle("");
+      setDescription("");
+      setAssigneeId("");
+      setStatus("TODO");
+      setPriority("MEDIUM");
+      setDueDate("");
+
+      await load();
+    } catch (e) {
+      notify({ title: "Create failed", message: e?.message || "Failed to create task.", type: "error" });
+    }
+  };
+
+  const onStatusChange = async (taskId, nextStatus) => {
+    try {
+      await updateTask(taskId, { status: nextStatus });
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status: nextStatus, updatedAt: Date.now() } : t)));
+      notify({ title: "Status updated", message: `Task moved to ${nextStatus}.`, type: "success" });
+    } catch (e) {
+      notify({ title: "Update failed", message: e?.message || "Failed to update status.", type: "error" });
+    }
+  };
+
+  const onDeleteTask = async (t) => {
+    const ok = window.confirm(`Delete task "${t.title}"?`);
+    if (!ok) return;
+
+    try {
+      await deleteTask(t.id);
+      notify({ title: "Task deleted", message: "Task removed.", type: "success" });
+      await load();
+    } catch (e) {
+      notify({ title: "Delete failed", message: e?.message || "Failed to delete task.", type: "error" });
+    }
+  };
+
+  const onBack = () => navigate("/projects");
+
+  if (loading) return <Card>Loading project…</Card>;
+
+  if (error && !project) {
+    return (
+      <div>
+        <PageHeader
+          title="Project Details"
+          subtitle="Project not found"
+          actions={<Button onClick={onBack}>← Back to Projects</Button>}
+        />
+        <Card style={{ background: "#fee2e2", borderColor: "#fecaca", color: "#991b1b" }}>{error}</Card>
+      </div>
+    );
+  }
 
   return (
-    <MainLayout>
-      {/* Page Header */}
-      <div style={styles.header}>
-        <h2 style={styles.pageTitle}>Sri Lankan Data Analytics Dashboard</h2>
-        <p style={styles.subtitle}>Project ID: 1005 | Company: The Qexle | Lead: Ashan Fernando</p>
+    <div>
+      <PageHeader
+        title={project?.name || "Project"}
+        subtitle={`Owner: ${project?.owner || "—"} • Status: ${project?.status || "—"}`}
+        actions={<Button onClick={onBack}>← Back</Button>}
+      />
+
+      {/* Summary */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 12, marginBottom: 12 }}>
+        <Card>
+          <div style={meta.label}>Project ID</div>
+          <div style={meta.value}>{project?.id}</div>
+        </Card>
+        <Card>
+          <div style={meta.label}>Progress</div>
+          <div style={meta.value}>{projectProgress}%</div>
+          <div style={{ marginTop: 10 }}>
+            <ProgressBar value={projectProgress} />
+          </div>
+        </Card>
+        <Card>
+          <div style={meta.label}>Tasks</div>
+          <div style={meta.value}>{tasks.length}</div>
+          <div style={{ marginTop: 6, color: "#6b7280", fontSize: 13 }}>
+            Done: {tasks.filter((t) => t.status === "DONE").length}
+          </div>
+        </Card>
       </div>
 
-      {/* Summary Cards */}
-      <div style={styles.summaryGrid}>
-        <div style={styles.summaryCard}>
-          <FaCheckCircle size={24} color="#10B981" />
-          <div>
-            <span style={styles.cardTitle}>Completion</span>
-            <span style={styles.cardValue}>85%</span>
-          </div>
+      {/* Create task inline */}
+      <Card style={{ marginBottom: 12 }}>
+        <div style={{ fontWeight: 950, marginBottom: 10 }}>Add Task</div>
+
+        <div style={form.grid}>
+          <Field label="Title">
+            <input value={title} onChange={(e) => setTitle(e.target.value)} style={form.input} placeholder="Task title" />
+          </Field>
+
+          <Field label="Assignee">
+            <select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} style={form.input}>
+              <option value="">Unassigned</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name} ({u.role})
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label="Status">
+            <select value={status} onChange={(e) => setStatus(e.target.value)} style={form.input}>
+              {STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label="Priority">
+            <select value={priority} onChange={(e) => setPriority(e.target.value)} style={form.input}>
+              {PRIORITIES.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label="Due Date">
+            <input value={dueDate} onChange={(e) => setDueDate(e.target.value)} style={form.input} type="date" />
+          </Field>
         </div>
-        <div style={styles.summaryCard}>
-          <FaClock size={24} color="#EF4444" />
-          <div>
-            <span style={styles.cardTitle}>Timeline</span>
-            <span style={styles.cardValue}>627 days overdue</span>
-          </div>
+
+        <div style={{ marginTop: 10 }}>
+          <label style={form.label}>Description</label>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            style={{ ...form.input, height: 90, resize: "vertical" }}
+            placeholder="Optional description"
+          />
         </div>
-        <div style={styles.summaryCard}>
-          <FaUsers size={24} color="#FBBF24" />
-          <div>
-            <span style={styles.cardTitle}>Team</span>
-            <span style={styles.cardValue}>5 members</span>
-          </div>
+
+        <div style={{ marginTop: 12 }}>
+          <Button variant="primary" onClick={onCreateTask}>
+            + Add Task
+          </Button>
         </div>
-        <div style={styles.summaryCard}>
-          <FaInfoCircle size={24} color="#4F46E5" />
-          <div>
-            <span style={styles.cardTitle}>Status</span>
-            <span style={styles.cardValue}>High Priority</span>
-          </div>
+      </Card>
+
+      {/* Tasks table */}
+      <Card>
+        <div style={{ fontWeight: 950, marginBottom: 10 }}>Project Tasks</div>
+
+        <Table>
+          <thead>
+            <tr>
+              <Th>Title</Th>
+              <Th>Assignee</Th>
+              <Th>Status</Th>
+              <Th>Priority</Th>
+              <Th>Due</Th>
+              <Th>Updated</Th>
+              <Th>Actions</Th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {tasks.map((t) => (
+              <tr key={t.id}>
+                <Td>
+                  <div style={{ fontWeight: 950 }}>{t.title}</div>
+                  <div style={{ color: "#6b7280", fontSize: 13, marginTop: 4 }}>{t.description || "—"}</div>
+                </Td>
+
+                <Td>{assigneeName(users, t.assigneeId)}</Td>
+
+                <Td>
+                  <select
+                    value={t.status}
+                    onChange={(e) => onStatusChange(t.id, e.target.value)}
+                    style={{ ...form.input, padding: "6px 10px", width: 170 }}
+                  >
+                    {STATUSES.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </Td>
+
+                <Td>
+                  <Pill>{t.priority}</Pill>
+                </Td>
+
+                <Td>{t.dueDate || "—"}</Td>
+                <Td>{formatTime(t.updatedAt)}</Td>
+
+                <Td>
+                  <Button variant="danger" onClick={() => onDeleteTask(t)}>
+                    Delete
+                  </Button>
+                </Td>
+              </tr>
+            ))}
+
+            {tasks.length === 0 ? (
+              <tr>
+                <Td colSpan={7}>No tasks for this project yet.</Td>
+              </tr>
+            ) : null}
+          </tbody>
+        </Table>
+
+        {/* Helpful link back */}
+        <div style={{ marginTop: 10, color: "#6b7280", fontSize: 13 }}>
+          Tip: You can also manage all tasks from{" "}
+          <Link to="/tasks" style={{ fontWeight: 900, textDecoration: "none", color: "#111827" }}>
+            Tasks
+          </Link>
+          .
         </div>
-      </div>
-
-      {/* Tabs */}
-      <div style={styles.tabs}>
-        <TabButton
-          title="Overview"
-          icon={<FaInfoCircle />}
-          active={activeTab === "overview"}
-          onClick={() => setActiveTab("overview")}
-        />
-        <TabButton
-          title="Team"
-          icon={<FaUsers />}
-          active={activeTab === "team"}
-          onClick={() => setActiveTab("team")}
-        />
-        <TabButton
-          title="Updates"
-          icon={<FaClock />}
-          active={activeTab === "updates"}
-          onClick={() => setActiveTab("updates")}
-        />
-        <TabButton
-          title="Files"
-          icon={<FaFileAlt />}
-          active={activeTab === "files"}
-          onClick={() => setActiveTab("files")}
-        />
-        <TabButton
-          title="External Links"
-          icon={<FaTasks />}
-          active={activeTab === "links"}
-          onClick={() => setActiveTab("links")}
-        />
-      </div>
-
-      {/* Tab Content */}
-      <div style={styles.tabContent}>
-        {activeTab === "overview" && (
-          <div>
-            <h3 style={styles.sectionTitle}>Project Overview</h3>
-            <p>Company: The Qexle</p>
-            <p>Category: Data Science</p>
-            <p>Status: High Priority</p>
-            <p>Responsible Person: Susith Deshan Alwis</p>
-          </div>
-        )}
-
-        {activeTab === "team" && (
-          <div>
-            <h3 style={styles.sectionTitle}>Project Team Members</h3>
-            <div style={styles.teamCard}>
-              <strong>Leadership</strong>
-              <p>Project Lead: Nadeesha Jayawardena</p>
-              <p>Responsible Person: Susith Deshan Alwis</p>
-            </div>
-            <div style={styles.teamCard}>
-              <strong>Team Members (3)</strong>
-              <ul>
-                <li>Kavinda Wickramasinghe</li>
-                <li>Ashan Fernando</li>
-                <li>Sashini Silva</li>
-              </ul>
-            </div>
-            <div style={styles.teamCard}>
-              <strong>Developers (2)</strong>
-              <ul>
-                <li>Kavinda Wickramasinghe</li>
-                <li>Ashan Fernando</li>
-              </ul>
-            </div>
-          </div>
-        )}
-
-        {activeTab === "updates" && (
-          <div>
-            <h3 style={styles.sectionTitle}>Project Updates</h3>
-            <div style={styles.addUpdate}>
-              <select style={styles.select}>
-                <option>Regular Update</option>
-                <option>Daily Update</option>
-              </select>
-              <textarea placeholder="Enter project update..." style={styles.textarea} />
-              <button style={styles.primaryBtn}><FaPlus /> Add Update</button>
-            </div>
-          </div>
-        )}
-
-        {activeTab === "files" && (
-          <div>
-            <h3 style={styles.sectionTitle}>Project Files</h3>
-            <div style={styles.filesCard}>
-              <p>No files yet</p>
-              <p>Upload files to share project documents with the team.</p>
-              <button style={styles.primaryBtn}>Upload File</button>
-            </div>
-          </div>
-        )}
-
-        {activeTab === "links" && (
-          <div>
-            <h3 style={styles.sectionTitle}>External Project Links</h3>
-            <div style={styles.linksGrid}>
-              <a href="https://github.com/qexle/retail-platform" target="_blank" rel="noreferrer" style={styles.linkCard}>
-                <FaGithub size={24} />
-                <div>
-                  <strong>GitHub Repository</strong>
-                  <p>Access the project's source code repository</p>
-                </div>
-              </a>
-              <a href="https://figma.com/file/qexle-retail-platform" target="_blank" rel="noreferrer" style={styles.linkCard}>
-                <FaFigma size={24} />
-                <div>
-                  <strong>Figma Design</strong>
-                  <p>Access the project's design files in Figma</p>
-                </div>
-              </a>
-              <a href="#" target="_blank" rel="noreferrer" style={styles.linkCard}>
-                <FaTasks size={24} />
-                <div>
-                  <strong>Jira Project</strong>
-                  <p>Access the project's tasks and tracking in Jira</p>
-                </div>
-              </a>
-            </div>
-          </div>
-        )}
-      </div>
-    </MainLayout>
+      </Card>
+    </div>
   );
+}
+
+function Field({ label, children }) {
+  return (
+    <div>
+      <label style={form.label}>{label}</label>
+      {children}
+    </div>
+  );
+}
+
+function Pill({ children }) {
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        padding: "4px 10px",
+        borderRadius: 999,
+        fontSize: 12,
+        fontWeight: 900,
+        background: "#f3f4f6",
+        color: "#374151",
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
+function ProgressBar({ value }) {
+  const v = Math.max(0, Math.min(100, Number(value) || 0));
+  return (
+    <div style={{ height: 10, borderRadius: 999, background: "#f3f4f6", overflow: "hidden", border: "1px solid #e5e7eb" }}>
+      <div style={{ height: "100%", width: `${v}%`, background: "#111827" }} />
+    </div>
+  );
+}
+
+function assigneeName(users, id) {
+  if (!id) return "Unassigned";
+  const u = users.find((x) => x.id === id);
+  return u ? u.name : "Unknown";
+}
+
+function formatTime(ts) {
+  if (!ts) return "—";
+  return new Date(ts).toLocaleString();
+}
+
+const meta = {
+  label: { fontSize: 12, color: "#6b7280", fontWeight: 900 },
+  value: { fontSize: 22, fontWeight: 950, marginTop: 6 },
 };
 
-/* --- Tab Button --- */
-const TabButton = ({ title, icon, active, onClick }) => (
-  <button
-    onClick={onClick}
-    style={{
-      ...styles.tabButton,
-      background: active ? "#4F46E5" : "#F3F4F6",
-      color: active ? "#fff" : "#111827",
-    }}
-  >
-    {icon} <span style={{ marginLeft: 6 }}>{title}</span>
-  </button>
-);
-
-/* --- Styles --- */
-const styles = {
-  header: { marginBottom: 24 },
-  pageTitle: { fontSize: 24, fontWeight: 600, marginBottom: 4 },
-  subtitle: { color: "#6B7280", fontSize: 14 },
-  summaryGrid: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 },
-  summaryCard: { display: "flex", alignItems: "center", gap: 12, background: "#fff", padding: 16, borderRadius: 10, boxShadow: "0 2px 6px rgba(0,0,0,0.05)" },
-  cardTitle: { fontSize: 12, color: "#6B7280" },
-  cardValue: { fontSize: 18, fontWeight: 600 },
-  tabs: { display: "flex", gap: 12, marginBottom: 16 },
-  tabButton: { padding: "8px 16px", borderRadius: 8, border: "none", display: "flex", alignItems: "center", cursor: "pointer", fontWeight: 500 },
-  tabContent: { background: "#fff", padding: 24, borderRadius: 10, boxShadow: "0 2px 6px rgba(0,0,0,0.05)" },
-  sectionTitle: { fontSize: 18, fontWeight: 600, marginBottom: 12 },
-  teamCard: { background: "#F9FAFB", padding: 16, borderRadius: 8, marginBottom: 16 },
-  addUpdate: { display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 },
-  select: { padding: "8px 12px", borderRadius: 6, border: "1px solid #E5E7EB" },
-  textarea: { padding: 8, borderRadius: 6, border: "1px solid #E5E7EB", minHeight: 80, resize: "vertical" },
-  primaryBtn: { padding: "8px 16px", borderRadius: 6, border: "none", background: "#4F46E5", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 },
-  filesCard: { background: "#F9FAFB", padding: 16, borderRadius: 8 },
-  linksGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: 16 },
-  linkCard: { display: "flex", alignItems: "center", gap: 12, background: "#F3F4F6", padding: 16, borderRadius: 8, textDecoration: "none", color: "#111827", boxShadow: "0 2px 4px rgba(0,0,0,0.05)" },
+const form = {
+  grid: { display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 12 },
+  label: { fontSize: 12, color: "#6b7280", fontWeight: 900, marginBottom: 6, display: "block" },
+  input: { width: "100%", padding: 10, border: "1px solid #e5e7eb", borderRadius: 10, outline: "none", background: "white" },
 };
-
-export default ProjectDetails;
