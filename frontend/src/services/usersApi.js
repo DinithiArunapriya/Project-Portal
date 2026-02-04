@@ -1,168 +1,135 @@
-const KEY = "users_v1";
+// src/services/usersApi.js
 
-export const USER_ROLES = [
-  "SUPER_ADMIN",
-  "MANAGER",
-  "BUSINESS_ANALYST",
-  "DEVELOPER",
-  "DESIGNER",
-  "HR",
-  "QA",
-  "OTHER",
-];
+const STORAGE_KEY = "pp_users_v1";
 
-export const USER_STATUSES = ["ACTIVE", "DISABLED"];
+// Feel free to edit roles to match your app
+export const USER_ROLES = ["SUPER_ADMIN", "MANAGER", "DEVELOPER", "VIEWER"];
 
-function seedIfEmpty() {
-  const existing = localStorage.getItem(KEY);
-  if (existing) return;
-
-  const seed = [
-    {
-      id: "u1",
-      name: "Sarah Johnson",
-      email: "sarah.johnson@demo.com",
-      role: "SUPER_ADMIN",
-      status: "ACTIVE",
-      updatedAt: Date.now() - 1000 * 60 * 60 * 72,
-    },
-    {
-      id: "u2",
-      name: "Michael Chen",
-      email: "michael.chen@demo.com",
-      role: "MANAGER",
-      status: "ACTIVE",
-      updatedAt: Date.now() - 1000 * 60 * 60 * 48,
-    },
-    {
-      id: "u3",
-      name: "Emily Rodriguez",
-      email: "emily.rodriguez@demo.com",
-      role: "BUSINESS_ANALYST",
-      status: "ACTIVE",
-      updatedAt: Date.now() - 1000 * 60 * 60 * 24,
-    },
-    {
-      id: "u4",
-      name: "Alex Thompson",
-      email: "alex.thompson@demo.com",
-      role: "DEVELOPER",
-      status: "ACTIVE",
-      updatedAt: Date.now() - 1000 * 60 * 60 * 6,
-    },
-    {
-      id: "u5",
-      name: "Priya Patel",
-      email: "priya.patel@demo.com",
-      role: "DEVELOPER",
-      status: "ACTIVE",
-      updatedAt: Date.now() - 1000 * 60 * 60 * 9,
-    },
-    {
-      id: "u6",
-      name: "David Kim",
-      email: "david.kim@demo.com",
-      role: "DESIGNER",
-      status: "ACTIVE",
-      updatedAt: Date.now() - 1000 * 60 * 60 * 12,
-    },
-    {
-      id: "u7",
-      name: "Lisa Wang",
-      email: "lisa.wang@demo.com",
-      role: "HR",
-      status: "DISABLED",
-      updatedAt: Date.now() - 1000 * 60 * 60 * 18,
-    },
-  ];
-
-  localStorage.setItem(KEY, JSON.stringify(seed));
-}
-
-function readAll() {
-  seedIfEmpty();
+function read() {
   try {
-    return JSON.parse(localStorage.getItem(KEY)) || [];
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
 }
 
-function writeAll(items) {
-  localStorage.setItem(KEY, JSON.stringify(items));
+function write(users) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
 }
 
 function makeId() {
   return "u_" + Math.random().toString(16).slice(2) + Date.now().toString(16);
 }
 
+// Optional: seed initial users once, so page isn't empty
+function seedIfEmpty() {
+  const users = read();
+  if (users.length > 0) return;
+
+  const seeded = [
+    {
+      id: makeId(),
+      name: "Emily Rodriguez",
+      email: "emily@company.com",
+      department: "Product",
+      role: "MANAGER",
+      isActive: true,
+      password: "password123", // demo only
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    },
+    {
+      id: makeId(),
+      name: "Michael Chen",
+      email: "michael@company.com",
+      department: "Engineering",
+      role: "DEVELOPER",
+      isActive: true,
+      password: "password123", // demo only
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    },
+  ];
+
+  write(seeded);
+}
+
 export async function listUsers() {
-  await new Promise((r) => setTimeout(r, 200));
-  return readAll().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  seedIfEmpty();
+  return read();
 }
 
-export async function getUserById(id) {
-  await new Promise((r) => setTimeout(r, 150));
-  return readAll().find((u) => u.id === id) || null;
-}
+export async function createUser(payload) {
+  const users = read();
 
-export async function createUser(input) {
-  await new Promise((r) => setTimeout(r, 250));
-  const items = readAll();
+  // basic validation
+  if (!payload?.name?.trim()) throw new Error("Name is required");
+  if (!payload?.email?.trim()) throw new Error("Email is required");
+  if (!payload?.password?.trim()) throw new Error("Password is required");
 
-  const email = (input.email || "").trim().toLowerCase();
-  if (!email) throw new Error("Email is required.");
+  const emailLower = payload.email.trim().toLowerCase();
+  const exists = users.some((u) => String(u.email || "").toLowerCase() === emailLower);
+  if (exists) throw new Error("A user with this email already exists");
 
-  const exists = items.some((u) => (u.email || "").toLowerCase() === email);
-  if (exists) throw new Error("A user with this email already exists.");
-
-  const user = {
+  const now = Date.now();
+  const newUser = {
     id: makeId(),
-    name: (input.name || "").trim(),
-    email,
-    role: input.role || "VIEWER",
-    status: input.status || "ACTIVE",
-    updatedAt: Date.now(),
+    name: payload.name.trim(),
+    email: payload.email.trim(),
+    department: (payload.department || "").trim(),
+    role: payload.role || "VIEWER",
+    isActive: payload.isActive ?? true,
+    password: payload.password, // NOTE: stored locally (demo only)
+    createdAt: now,
+    updatedAt: now,
   };
 
-  if (!user.name) throw new Error("Name is required.");
-
-  items.unshift(user);
-  writeAll(items);
-  return user;
+  write([newUser, ...users]);
+  return newUser;
 }
 
-export async function updateUser(id, patch) {
-  await new Promise((r) => setTimeout(r, 250));
-  const items = readAll();
-  const idx = items.findIndex((u) => u.id === id);
-  if (idx === -1) throw new Error("User not found.");
+export async function updateUser(id, payload) {
+  const users = read();
+  const idx = users.findIndex((u) => u.id === id);
+  if (idx === -1) throw new Error("User not found");
 
-  if (patch.email != null) {
-    const nextEmail = (patch.email || "").trim().toLowerCase();
-    if (!nextEmail) throw new Error("Email is required.");
-    const conflict = items.some((u) => u.id !== id && (u.email || "").toLowerCase() === nextEmail);
-    if (conflict) throw new Error("Another user already has this email.");
+  const current = users[idx];
+
+  // If updating email, prevent duplicates
+  if (payload?.email && payload.email.trim().toLowerCase() !== String(current.email).toLowerCase()) {
+    const emailLower = payload.email.trim().toLowerCase();
+    const exists = users.some((u) => u.id !== id && String(u.email || "").toLowerCase() === emailLower);
+    if (exists) throw new Error("A user with this email already exists");
   }
 
-  items[idx] = {
-    ...items[idx],
-    ...(patch.name != null ? { name: (patch.name || "").trim() } : {}),
-    ...(patch.email != null ? { email: (patch.email || "").trim().toLowerCase() } : {}),
-    ...(patch.role != null ? { role: patch.role } : {}),
-    ...(patch.status != null ? { status: patch.status } : {}),
+  const next = {
+    ...current,
+    name: payload?.name != null ? String(payload.name).trim() : current.name,
+    email: payload?.email != null ? String(payload.email).trim() : current.email,
+    department: payload?.department != null ? String(payload.department).trim() : current.department,
+    role: payload?.role != null ? payload.role : current.role,
+    isActive: payload?.isActive != null ? !!payload.isActive : current.isActive,
+    // Password optional on edit: only update if user typed it
+    password: payload?.password ? payload.password : current.password,
     updatedAt: Date.now(),
   };
 
-  if (!items[idx].name) throw new Error("Name is required.");
-
-  writeAll(items);
-  return items[idx];
+  const copy = [...users];
+  copy[idx] = next;
+  write(copy);
+  return next;
 }
 
 export async function deleteUser(id) {
-  await new Promise((r) => setTimeout(r, 200));
-  const items = readAll();
-  writeAll(items.filter((u) => u.id !== id));
+  const users = read();
+  write(users.filter((u) => u.id !== id));
   return true;
+}
+
+// Optional helper if you ever need it elsewhere:
+export async function getUserById(id) {
+  const users = read();
+  return users.find((u) => u.id === id) || null;
 }

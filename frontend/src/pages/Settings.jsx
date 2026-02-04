@@ -13,8 +13,6 @@ import {
   updateAppearanceSettings,
 } from "../services/settingsApi";
 
-const TABS = ["account", "profile", "notifications", "appearance"];
-
 const COLOR_OPTIONS = [
   { value: "primary", label: "Blue", swatch: "#2563eb" },
   { value: "indigo", label: "Indigo", swatch: "#4f46e5" },
@@ -31,7 +29,6 @@ export default function Settings() {
   const notify = useNotify();
 
   const [activeTab, setActiveTab] = React.useState("account");
-
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState("");
 
@@ -65,6 +62,9 @@ export default function Settings() {
   // snapshots for Cancel on profile tab
   const [profileSnapshot, setProfileSnapshot] = React.useState(null);
 
+  // ✅ ref to clear file input when removing avatar
+  const avatarInputRef = React.useRef(null);
+
   const load = React.useCallback(async () => {
     setLoading(true);
     setError("");
@@ -72,14 +72,15 @@ export default function Settings() {
       const data = await getSettings();
       if (!data) throw new Error("Settings not found");
 
-      setProfile((p) => ({
-        ...p,
+      const nextProfile = {
         name: user?.name || data.profile?.name || "",
         jobTitle: data.profile?.jobTitle || "",
         department: data.profile?.department || "",
         bio: data.profile?.bio || "",
         avatar: data.profile?.avatar || null,
-      }));
+      };
+
+      setProfile((p) => ({ ...p, ...nextProfile }));
 
       setNotifications({
         email: !!data.notifications?.email,
@@ -92,13 +93,7 @@ export default function Settings() {
         colorScheme: data.appearance?.colorScheme || "primary",
       });
 
-      setProfileSnapshot({
-        name: user?.name || data.profile?.name || "",
-        jobTitle: data.profile?.jobTitle || "",
-        department: data.profile?.department || "",
-        bio: data.profile?.bio || "",
-        avatar: data.profile?.avatar || null,
-      });
+      setProfileSnapshot(nextProfile);
     } catch (e) {
       setError(e?.message || "Failed to load settings");
       notify({ title: "Load failed", message: e?.message || "Failed to load settings", type: "error" });
@@ -150,7 +145,7 @@ export default function Settings() {
 
       // Update auth user name too (so header/sidebar shows new name)
       if (typeof setUser === "function") {
-        setUser({ ...(user || {}), name: saved.name });
+        setUser({ ...(user || {}), name: saved?.name ?? profile.name });
       }
 
       setProfileSnapshot({ ...profile });
@@ -162,6 +157,8 @@ export default function Settings() {
 
   const cancelProfile = () => {
     if (profileSnapshot) setProfile({ ...profileSnapshot });
+    // also clear file input (so re-uploading same file works)
+    if (avatarInputRef.current) avatarInputRef.current.value = "";
     notify({ title: "Cancelled", message: "Changes were discarded", type: "info" });
   };
 
@@ -189,17 +186,26 @@ export default function Settings() {
 
     const okTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
     if (!okTypes.includes(file.type)) {
+      if (avatarInputRef.current) avatarInputRef.current.value = "";
       return notify({ title: "Invalid", message: "Please upload JPG, PNG, GIF or WEBP", type: "error" });
     }
 
     const maxBytes = 2 * 1024 * 1024;
     if (file.size > maxBytes) {
+      if (avatarInputRef.current) avatarInputRef.current.value = "";
       return notify({ title: "Too large", message: "Max size is 2MB", type: "error" });
     }
 
     const base64 = await fileToBase64(file);
     setProfile((p) => ({ ...p, avatar: base64 }));
     notify({ title: "Uploaded", message: "Avatar selected (saved when you press Save)", type: "success" });
+  };
+
+  // ✅ Remove avatar
+  const removeAvatar = () => {
+    setProfile((p) => ({ ...p, avatar: null }));
+    if (avatarInputRef.current) avatarInputRef.current.value = "";
+    notify({ title: "Removed", message: "Avatar removed (save to persist)", type: "info" });
   };
 
   return (
@@ -246,25 +252,19 @@ export default function Settings() {
                 profile={profile}
                 setProfile={setProfile}
                 onUploadAvatar={onUploadAvatar}
+                onRemoveAvatar={removeAvatar}
+                avatarInputRef={avatarInputRef}
                 onCancel={cancelProfile}
                 onSave={saveProfile}
               />
             ) : null}
 
             {activeTab === "notifications" ? (
-              <NotificationsTab
-                notifications={notifications}
-                setNotifications={setNotifications}
-                onSave={saveNotifications}
-              />
+              <NotificationsTab notifications={notifications} setNotifications={setNotifications} onSave={saveNotifications} />
             ) : null}
 
             {activeTab === "appearance" ? (
-              <AppearanceTab
-                appearance={appearance}
-                setAppearance={setAppearance}
-                onSave={saveAppearance}
-              />
+              <AppearanceTab appearance={appearance} setAppearance={setAppearance} onSave={saveAppearance} />
             ) : null}
           </div>
         </Card>
@@ -362,7 +362,7 @@ function AccountTab({ user, profile, setProfile, passwords, setPasswords, onUpda
   );
 }
 
-function ProfileTab({ profile, setProfile, onUploadAvatar, onCancel, onSave }) {
+function ProfileTab({ profile, setProfile, onUploadAvatar, onRemoveAvatar, avatarInputRef, onCancel, onSave }) {
   return (
     <div style={{ display: "grid", gap: 18 }}>
       <div>
@@ -376,16 +376,13 @@ function ProfileTab({ profile, setProfile, onUploadAvatar, onCancel, onSave }) {
             ) : (
               <div style={styles.avatarPlaceholder}>👤</div>
             )}
-
-            <div style={styles.avatarOverlay}>
-              <span style={{ color: "white", fontWeight: 900, fontSize: 12 }}>Change</span>
-            </div>
           </div>
 
-          <div>
+          <div style={{ display: "grid", gap: 6 }}>
             <label style={{ cursor: "pointer", color: "#2563eb", fontWeight: 900, fontSize: 13 }}>
               Upload new image
               <input
+                ref={avatarInputRef}
                 type="file"
                 accept="image/*"
                 onChange={(e) => onUploadAvatar(e.target.files?.[0])}
@@ -393,9 +390,13 @@ function ProfileTab({ profile, setProfile, onUploadAvatar, onCancel, onSave }) {
               />
             </label>
 
-            <div style={{ marginTop: 6, color: "#6b7280", fontSize: 12 }}>
-              JPG, GIF or PNG. Max size of 2MB
-            </div>
+            {profile.avatar ? (
+              <button type="button" onClick={onRemoveAvatar} style={styles.removeBtn}>
+                Remove image
+              </button>
+            ) : null}
+
+            <div style={{ color: "#6b7280", fontSize: 12 }}>JPG, GIF, PNG, WEBP. Max size of 2MB</div>
           </div>
         </div>
 
@@ -435,7 +436,9 @@ function ProfileTab({ profile, setProfile, onUploadAvatar, onCancel, onSave }) {
 
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
         <Button onClick={onCancel}>Cancel</Button>
-        <Button variant="primary" onClick={onSave}>Save</Button>
+        <Button variant="primary" onClick={onSave}>
+          Save
+        </Button>
       </div>
     </div>
   );
@@ -475,7 +478,9 @@ function NotificationsTab({ notifications, setNotifications, onSave }) {
       <div style={styles.sectionDivider} />
 
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
-        <Button variant="primary" onClick={onSave}>Save Preferences</Button>
+        <Button variant="primary" onClick={onSave}>
+          Save Preferences
+        </Button>
       </div>
     </div>
   );
@@ -544,7 +549,9 @@ function AppearanceTab({ appearance, setAppearance, onSave }) {
       <div style={styles.sectionDivider} />
 
       <div style={{ display: "flex", justifyContent: "flex-end" }}>
-        <Button variant="primary" onClick={onSave}>Save Preferences</Button>
+        <Button variant="primary" onClick={onSave}>
+          Save Preferences
+        </Button>
       </div>
     </div>
   );
@@ -689,16 +696,16 @@ const styles = {
     fontSize: 34,
     color: "#6b7280",
   },
-  avatarOverlay: {
-    position: "absolute",
-    inset: 0,
-    background: "rgba(0,0,0,0.35)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    opacity: 0,
-    transition: "opacity 150ms ease",
-    pointerEvents: "none",
+
+  removeBtn: {
+    border: "1px solid #fecaca",
+    background: "#fff1f2",
+    color: "#991b1b",
+    padding: "8px 10px",
+    borderRadius: 10,
+    fontWeight: 900,
+    cursor: "pointer",
+    width: "fit-content",
   },
 
   themeGrid: {
@@ -732,9 +739,3 @@ const styles = {
     boxShadow: "0 0 0 2px rgba(37, 99, 235, 0.25)",
   },
 };
-
-// Make avatar overlay show on hover (simple inline trick)
-document.addEventListener?.("mouseover", (e) => {
-  const wrap = e.target?.closest?.("[data-avatar-wrap]");
-  if (!wrap) return;
-});

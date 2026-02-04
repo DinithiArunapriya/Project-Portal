@@ -1,173 +1,189 @@
 import React from "react";
-import Card from "./ui/Card";
 import Button from "./ui/Button";
-import { listUsersForAssign, STATUSES, PRIORITIES, TASK_CATEGORIES } from "../services/tasksApi";
-import { listProjects } from "../services/projectsApi";
+import Card from "./ui/Card";
+import { TASK_STATUSES, TASK_PRIORITIES, TASK_CATEGORIES } from "../services/tasksApi";
 
-export default function TaskModal({ open, mode = "create", initialTask, onClose, onSubmit }) {
-  const [users, setUsers] = React.useState([]);
-  const [projects, setProjects] = React.useState([]);
-
-  const [title, setTitle] = React.useState("");
-  const [description, setDescription] = React.useState("");
-  const [projectId, setProjectId] = React.useState("");
-  const [assigneeId, setAssigneeId] = React.useState("");
-  const [status, setStatus] = React.useState("TODO");
-  const [priority, setPriority] = React.useState("MEDIUM");
-  const [category, setCategory] = React.useState("OTHER");
-  const [dueDate, setDueDate] = React.useState("");
-
-  React.useEffect(() => {
-    if (!open) return;
-
-    setTitle(initialTask?.title || "");
-    setDescription(initialTask?.description || "");
-    setProjectId(initialTask?.projectId || "");
-    setAssigneeId(initialTask?.assigneeId || "");
-    setStatus(initialTask?.status || "TODO");
-    setPriority(initialTask?.priority || "MEDIUM");
-    setCategory(initialTask?.category || "OTHER");
-    setDueDate(initialTask?.dueDate || "");
-  }, [open, initialTask]);
+export default function TaskModal({ open, mode, initial, users = [], projects = [], onClose, onSubmit }) {
+  const [form, setForm] = React.useState({
+    projectId: "",
+    title: "",
+    description: "",
+    assigneeId: "unassigned",
+    status: "TODO",
+    priority: "MEDIUM",
+    category: "OTHER",
+    dueDate: "",
+  });
 
   React.useEffect(() => {
     if (!open) return;
-    (async () => {
-      const [u, p] = await Promise.all([listUsersForAssign(), listProjects()]);
-      setUsers(u || []);
-      setProjects(p || []);
-    })();
-  }, [open]);
+    setForm({
+      projectId: initial?.projectId || projects?.[0]?.id || "",
+      title: initial?.title || "",
+      description: initial?.description || "",
+      assigneeId: initial?.assigneeId || "unassigned",
+      status: initial?.status || "TODO",
+      priority: initial?.priority || "MEDIUM",
+      category: initial?.category || "OTHER",
+      dueDate: initial?.dueDate || "",
+    });
+  }, [open, initial, projects]);
 
   if (!open) return null;
 
-  const submit = async (e) => {
-    e.preventDefault();
-    if (!title.trim()) return alert("Title is required.");
-    await onSubmit({
-      title,
-      description,
-      projectId: projectId || null,
-      assigneeId: assigneeId || null,
-      status,
-      priority,
-      category,
-      dueDate: dueDate || null,
+  const submit = () => {
+    if (!form.title.trim()) return alert("Task title is required");
+    if (!form.projectId) return alert("Select a project");
+
+    onSubmit?.({
+      projectId: form.projectId,
+      title: form.title.trim(),
+      description: form.description.trim(),
+      assigneeId: form.assigneeId === "unassigned" ? null : form.assigneeId,
+      status: form.status,
+      priority: form.priority,
+      category: form.category,
+      dueDate: form.dueDate,
     });
   };
 
   return (
-    <div style={styles.backdrop} onMouseDown={onClose}>
-      <div style={styles.modal} onMouseDown={(e) => e.stopPropagation()}>
+    <div style={styles.overlay} onMouseDown={onClose}>
+      <div style={styles.dialog} onMouseDown={(e) => e.stopPropagation()}>
         <Card>
-          <div style={styles.headerRow}>
-            <div>
-              <div style={styles.title}>{mode === "edit" ? "Edit Task" : "New Task"}</div>
-              <div style={styles.subtitle}>Create and manage tasks</div>
-            </div>
-            <button style={styles.xBtn} onClick={onClose}>✕</button>
+          <div style={styles.header}>
+            <div style={styles.h}>{mode === "edit" ? "Edit Task" : "Create Task"}</div>
+            <button onClick={onClose} style={styles.x}>✕</button>
           </div>
 
-          <form onSubmit={submit}>
-            <div style={styles.grid}>
-              <div style={styles.field}>
-                <label style={styles.label}>Title</label>
-                <input value={title} onChange={(e) => setTitle(e.target.value)} style={styles.input} />
-              </div>
+          <div style={styles.grid}>
+            <Field label="Project">
+              <select
+                value={form.projectId}
+                onChange={(e) => setForm((s) => ({ ...s, projectId: e.target.value }))}
+                style={styles.input}
+              >
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </Field>
 
-              <div style={styles.field}>
-                <label style={styles.label}>Project</label>
-                <select value={projectId} onChange={(e) => setProjectId(e.target.value)} style={styles.select}>
-                  <option value="">Unassigned</option>
-                  {projects.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
-              </div>
+            <Field label="Title">
+              <input
+                value={form.title}
+                onChange={(e) => setForm((s) => ({ ...s, title: e.target.value }))}
+                placeholder="Task title"
+                style={styles.input}
+              />
+            </Field>
 
-              <div style={{ ...styles.field, gridColumn: "1 / -1" }}>
-                <label style={styles.label}>Description</label>
+            <Field label="Assignee">
+              <select
+                value={form.assigneeId}
+                onChange={(e) => setForm((s) => ({ ...s, assigneeId: e.target.value }))}
+                style={styles.input}
+              >
+                <option value="unassigned">Unassigned</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>{u.name}</option>
+                ))}
+              </select>
+            </Field>
+
+            <Field label="Status">
+              <select
+                value={form.status}
+                onChange={(e) => setForm((s) => ({ ...s, status: e.target.value }))}
+                style={styles.input}
+              >
+                {TASK_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </Field>
+
+            <Field label="Priority">
+              <select
+                value={form.priority}
+                onChange={(e) => setForm((s) => ({ ...s, priority: e.target.value }))}
+                style={styles.input}
+              >
+                {TASK_PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </Field>
+
+            <Field label="Category">
+              <select
+                value={form.category}
+                onChange={(e) => setForm((s) => ({ ...s, category: e.target.value }))}
+                style={styles.input}
+              >
+                {TASK_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </Field>
+
+            <Field label="Due Date">
+              <input
+                type="date"
+                value={form.dueDate}
+                onChange={(e) => setForm((s) => ({ ...s, dueDate: e.target.value }))}
+                style={styles.input}
+              />
+            </Field>
+
+            <div style={{ gridColumn: "1 / -1" }}>
+              <Field label="Description">
                 <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  style={{ ...styles.input, minHeight: 90 }}
+                  rows={4}
+                  value={form.description}
+                  onChange={(e) => setForm((s) => ({ ...s, description: e.target.value }))}
+                  placeholder="Optional description"
+                  style={{ ...styles.input, height: 110, resize: "vertical" }}
                 />
-              </div>
-
-              <div style={styles.field}>
-                <label style={styles.label}>Assigned To</label>
-                <select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} style={styles.select}>
-                  <option value="">Unassigned</option>
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id}>{u.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={styles.field}>
-                <label style={styles.label}>Status</label>
-                <select value={status} onChange={(e) => setStatus(e.target.value)} style={styles.select}>
-                  {STATUSES.map((s) => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={styles.field}>
-                <label style={styles.label}>Priority</label>
-                <select value={priority} onChange={(e) => setPriority(e.target.value)} style={styles.select}>
-                  {PRIORITIES.map((p) => (
-                    <option key={p} value={p}>{p}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={styles.field}>
-                <label style={styles.label}>Category</label>
-                <select value={category} onChange={(e) => setCategory(e.target.value)} style={styles.select}>
-                  {TASK_CATEGORIES.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={styles.field}>
-                <label style={styles.label}>Due Date</label>
-                <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} style={styles.input} />
-              </div>
+              </Field>
             </div>
+          </div>
 
-            <div style={styles.footer}>
-              <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-              <Button type="submit" variant="primary">{mode === "edit" ? "Save" : "Create"}</Button>
-            </div>
-          </form>
+          <div style={styles.footer}>
+            <Button onClick={onClose}>Cancel</Button>
+            <Button variant="primary" onClick={submit}>
+              {mode === "edit" ? "Save Changes" : "Create Task"}
+            </Button>
+          </div>
         </Card>
       </div>
     </div>
   );
 }
 
+function Field({ label, children }) {
+  return (
+    <div style={{ display: "grid", gap: 8 }}>
+      <div style={styles.label}>{label}</div>
+      {children}
+    </div>
+  );
+}
+
 const styles = {
-  backdrop: {
+  overlay: {
     position: "fixed",
     inset: 0,
-    background: "rgba(17,24,39,0.35)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
+    background: "rgba(15, 23, 42, 0.45)",
+    display: "grid",
+    placeItems: "center",
+    zIndex: 999,
     padding: 16,
-    zIndex: 50,
   },
-  modal: { width: "min(900px, 100%)" },
-  headerRow: { display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", marginBottom: 12 },
-  title: { fontSize: 18, fontWeight: 950 },
-  subtitle: { fontSize: 13, color: "#6b7280", marginTop: 4 },
-  xBtn: { border: "1px solid #e5e7eb", background: "white", borderRadius: 10, width: 36, height: 36, cursor: "pointer" },
-  grid: { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 },
-  field: { display: "flex", flexDirection: "column", gap: 6 },
-  label: { fontSize: 12, fontWeight: 900, color: "#374151" },
-  input: { padding: 12, borderRadius: 12, border: "1px solid #e5e7eb", outline: "none" },
-  select: { padding: 12, borderRadius: 12, border: "1px solid #e5e7eb", background: "white", outline: "none" },
-  footer: { display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 },
+  dialog: { width: "min(900px, 100%)" },
+  header: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
+  h: { fontSize: 18, fontWeight: 950, color: "#0f172a" },
+  x: { border: "none", background: "transparent", cursor: "pointer", fontSize: 18, fontWeight: 900 },
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+    gap: 12,
+  },
+  label: { fontSize: 12, fontWeight: 900, color: "#475569" },
+  input: { width: "100%", padding: "10px 12px", borderRadius: 12, border: "1px solid #e2e8f0", outline: "none" },
+  footer: { display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 14 },
 };

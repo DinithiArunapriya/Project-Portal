@@ -154,6 +154,18 @@ const BasicInformation = () => {
         </div>
       </div>
 
+        {/* Due Date */}
+      <div style={styles.fieldGroup}>
+        <label>Due Date</label>
+        <div style={styles.optionGroup}>
+          {["Low", "Medium", "High", "Urgent"].map((p) => (
+            <button key={p} style={styles.optionBtn}>
+              {p}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Progress */}
       <div style={styles.fieldGroup}>
         <label>Progress</label>

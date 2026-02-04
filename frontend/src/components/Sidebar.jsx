@@ -25,8 +25,8 @@ export default function Sidebar({ variant = "desktop", onNavigate }) {
   return (
     <aside style={styles.wrap}>
       <div style={styles.top}>
-        <div style={{ fontWeight: 950 }}>Navigation</div>
-        <div style={{ fontSize: 12, color: "#6b7280" }}>{user?.role}</div>
+        <div style={{ fontWeight: 950 }}>Project Portal</div>
+        <div style={{ fontSize: 8, color: "#6b7280" }}>{user?.role}</div>
       </div>
 
       <nav style={styles.nav}>
@@ -42,9 +42,6 @@ export default function Sidebar({ variant = "desktop", onNavigate }) {
           <>
             <div style={styles.sectionLabel}>Admin</div>
             <Item to="/admin" label="Admin Dashboard" />
-            <Item to="/admin/auth-demo" label="Auth Demo" />
-            <Item to="/admin/roles" label="Roles" />
-            <Item to="/admin/email-mappings" label="Email Mappings" />
           </>
         ) : null}
       </nav>

@@ -26,7 +26,11 @@ export default function Dashboard() {
       setProjects(Array.isArray(p) ? p : []);
       setTasks(Array.isArray(t) ? t : []);
     } catch (e) {
-      notify({ type: "error", title: "Dashboard", message: e?.message || "Failed to load dashboard data" });
+      notify({
+        type: "error",
+        title: "Dashboard",
+        message: e?.message || "Failed to load dashboard data",
+      });
     } finally {
       setLoading(false);
     }
@@ -60,7 +64,7 @@ export default function Dashboard() {
     return counts;
   }, [projects]);
 
-  // recent grids
+  // recent lists
   const recentProjects = React.useMemo(() => {
     return projects
       .slice()
@@ -83,36 +87,39 @@ export default function Dashboard() {
       .slice(0, 5);
   }, [tasks]);
 
-  // time series labels for last 6 months
+  // month labels
   const monthLabels = React.useMemo(() => {
     const months = [];
     const today = new Date();
     for (let i = 5; i >= 0; i--) {
       const m = new Date(today.getFullYear(), today.getMonth() - i, 1);
-      months.push(m.toLocaleDateString("en-US", { month: "short", year: "numeric" }));
+      months.push(
+        m.toLocaleDateString("en-US", { month: "short", year: "numeric" })
+      );
     }
     return months;
   }, []);
 
   const getMonthlyCounts = React.useCallback(
     (bucket) => {
-      // bucket: COMPLETED or IN_PROGRESS
       const result = [0, 0, 0, 0, 0, 0];
       const today = new Date();
 
       for (const p of projects) {
         if (normalizeProjectStatus(p.status) !== bucket) continue;
 
-        // choose any date your app has (createdAt/startDate/updatedAt)
-        const d = parseDate(p.createdAt) || parseDate(p.startDate) || parseDate(p.updatedAt);
+        const d =
+          parseDate(p.createdAt) ||
+          parseDate(p.startDate) ||
+          parseDate(p.updatedAt);
         if (!d) continue;
 
         const monthsDiff =
-          (today.getFullYear() - d.getFullYear()) * 12 + (today.getMonth() - d.getMonth());
+          (today.getFullYear() - d.getFullYear()) * 12 +
+          (today.getMonth() - d.getMonth());
 
         if (monthsDiff >= 0 && monthsDiff < 6) {
-          const idx = 5 - monthsDiff;
-          result[idx] += 1;
+          result[5 - monthsDiff] += 1;
         }
       }
       return result;
@@ -120,15 +127,13 @@ export default function Dashboard() {
     [projects]
   );
 
-  // Build charts once data loaded or changes
+  // charts
   React.useEffect(() => {
     if (loading) return;
 
-    // destroy previous instances (important!)
     if (statusChartInstance.current) statusChartInstance.current.destroy();
     if (progressChartInstance.current) progressChartInstance.current.destroy();
 
-    // PIE / DOUGHNUT
     if (statusChartRef.current) {
       statusChartInstance.current = new Chart(statusChartRef.current, {
         type: "doughnut",
@@ -142,13 +147,7 @@ export default function Dashboard() {
                 statusCounts.ON_HOLD,
                 statusCounts.OTHER,
               ],
-              // nice colors (you asked!)
-              backgroundColor: [
-                "#4f46e5", // indigo
-                "#10b981", // green
-                "#f59e0b", // amber
-                "#94a3b8", // slate
-              ],
+              backgroundColor: ["#4f46e5", "#10b981", "#f59e0b", "#94a3b8"],
               borderColor: "#ffffff",
               borderWidth: 2,
             },
@@ -159,16 +158,12 @@ export default function Dashboard() {
           maintainAspectRatio: false,
           cutout: "70%",
           plugins: {
-            legend: {
-              position: "bottom",
-              labels: { usePointStyle: true, padding: 14 },
-            },
+            legend: { position: "bottom", labels: { usePointStyle: true } },
           },
         },
       });
     }
 
-    // LINE chart: Completed vs In Progress over time
     if (progressChartRef.current) {
       progressChartInstance.current = new Chart(progressChartRef.current, {
         type: "line",
@@ -196,28 +191,26 @@ export default function Dashboard() {
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: {
-            legend: { position: "top" },
-          },
-          scales: {
-            y: { beginAtZero: true },
-          },
+          scales: { y: { beginAtZero: true } },
         },
       });
     }
 
     return () => {
-      if (statusChartInstance.current) statusChartInstance.current.destroy();
-      if (progressChartInstance.current) progressChartInstance.current.destroy();
+      statusChartInstance.current?.destroy();
+      progressChartInstance.current?.destroy();
     };
   }, [loading, statusCounts, monthLabels, getMonthlyCounts]);
 
   return (
     <div>
+      {/* Header */}
       <div style={styles.headerRow}>
         <div>
           <h1 style={{ margin: 0 }}>Dashboard</h1>
-          <p style={{ margin: "6px 0 0", color: "#6b7280" }}>Overview of recent activity</p>
+          <p style={{ marginTop: 6, color: "#6b7280" }}>
+            Overview of recent activity
+          </p>
         </div>
 
         <button style={styles.primaryBtn} onClick={load} disabled={loading}>
@@ -225,57 +218,8 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {/* Recent grids */}
+      {/* Charts FIRST */}
       <div style={styles.grid2}>
-        <div style={styles.card}>
-          <div style={styles.cardTitle}>
-            Recent Projects <Link to="/projects" style={styles.link}>View all →</Link>
-          </div>
-
-          {recentProjects.length ? (
-            <div style={{ display: "grid", gap: 10 }}>
-              {recentProjects.map((p) => (
-                <Link
-                  key={p.id}
-                  to={`/projects/${p.id}`}
-                  style={styles.rowItem}
-                >
-                  <div style={{ fontWeight: 900 }}>{p.name}</div>
-                  <div style={styles.muted}>{String(p.status || "—")}</div>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <div style={styles.muted}>No projects yet.</div>
-          )}
-        </div>
-
-        <div style={styles.card}>
-          <div style={styles.cardTitle}>
-            Recent Tasks <Link to="/tasks" style={styles.link}>View all →</Link>
-          </div>
-
-          {recentTasks.length ? (
-            <div style={{ display: "grid", gap: 10 }}>
-              {recentTasks.map((t) => (
-                <Link
-                  key={t.id}
-                  to={`/tasks/${t.id}`}
-                  style={styles.rowItem}
-                >
-                  <div style={{ fontWeight: 900 }}>{t.title || t.name || "Untitled Task"}</div>
-                  <div style={styles.muted}>{String(t.status || "—")}</div>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <div style={styles.muted}>No tasks yet.</div>
-          )}
-        </div>
-      </div>
-
-      {/* Charts BELOW the grids (as you requested) */}
-      <div style={{ ...styles.grid2, marginTop: 12 }}>
         <div style={styles.card}>
           <div style={styles.cardTitle}>Project Status Distribution</div>
           <div style={{ height: 280 }}>
@@ -290,6 +234,45 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Recent Projects / Tasks AFTER */}
+      <div style={{ ...styles.grid2, marginTop: 12 }}>
+        <div style={styles.card}>
+          <div style={styles.cardTitle}>
+            Recent Projects
+            <Link to="/projects" style={styles.link}>View all →</Link>
+          </div>
+
+          {recentProjects.length ? (
+            recentProjects.map((p) => (
+              <Link key={p.id} to={`/projects/${p.id}`} style={styles.rowItem}>
+                <strong>{p.name}</strong>
+                <span style={styles.muted}>{p.status || "—"}</span>
+              </Link>
+            ))
+          ) : (
+            <div style={styles.muted}>No projects yet.</div>
+          )}
+        </div>
+
+        <div style={styles.card}>
+          <div style={styles.cardTitle}>
+            Recent Tasks
+            <Link to="/tasks" style={styles.link}>View all →</Link>
+          </div>
+
+          {recentTasks.length ? (
+            recentTasks.map((t) => (
+              <Link key={t.id} to={`/tasks/${t.id}`} style={styles.rowItem}>
+                <strong>{t.title || t.name || "Untitled Task"}</strong>
+                <span style={styles.muted}>{t.status || "—"}</span>
+              </Link>
+            ))
+          ) : (
+            <div style={styles.muted}>No tasks yet.</div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -298,50 +281,48 @@ const styles = {
   headerRow: {
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: 12,
     marginBottom: 14,
   },
   grid2: {
     display: "grid",
-    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+    gridTemplateColumns: "repeat(2, 1fr)",
     gap: 12,
   },
   card: {
-    background: "white",
+    background: "#fff",
     border: "1px solid #e5e7eb",
     borderRadius: 14,
     padding: 14,
   },
   cardTitle: {
-    fontWeight: 950,
+    fontWeight: 900,
     marginBottom: 12,
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "center",
   },
-  link: { color: "#4f46e5", textDecoration: "none", fontWeight: 900, fontSize: 13 },
+  link: {
+    color: "#4f46e5",
+    fontWeight: 800,
+    textDecoration: "none",
+    fontSize: 13,
+  },
   rowItem: {
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "center",
-    gap: 10,
     padding: "10px 12px",
-    borderRadius: 12,
     border: "1px solid #f3f4f6",
+    borderRadius: 12,
     textDecoration: "none",
     color: "#111827",
-    background: "#fafafa",
+    marginBottom: 8,
   },
-  muted: { color: "#6b7280", fontSize: 13, fontWeight: 800 },
+  muted: { color: "#6b7280", fontSize: 13 },
   primaryBtn: {
-    padding: "10px 14px",
-    borderRadius: 10,
-    border: "1px solid #111827",
     background: "#111827",
-    color: "white",
-    height: 42,
-    cursor: "pointer",
-    fontWeight: 900,
+    color: "#fff",
+    borderRadius: 10,
+    padding: "10px 14px",
+    fontWeight: 800,
+    border: "none",
   },
 };

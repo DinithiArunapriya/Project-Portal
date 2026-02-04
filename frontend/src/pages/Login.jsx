@@ -40,6 +40,15 @@ const DEMO_USERS = [
     role: "DESIGNER",
     dept: "Design",
   },
+
+{
+    id: "u_des",
+    name: "Shang Wong",
+    email: "shang.wong@demo.com",
+    role: "QA",
+    dept: "Quality Assurance",
+  },
+
   {
     id: "u_hr",
     name: "Lisa Wang",
@@ -69,6 +78,11 @@ const ROLE_META = {
   DESIGNER: {
     title: "Designer",
     desc: "Design tasks, collaboration, and reviews",
+  },
+
+  QA: {
+    title: "QA",
+    desc: "QA tasks, collaboration, and reviews",
   },
   HR: {
     title: "HR",
@@ -221,7 +235,7 @@ export default function Login() {
           </ul>
         </div>
 
-        <div style={styles.footerNote}>© {new Date().getFullYear()} Dinithi Development  </div>
+        <div style={styles.footerNote}>© {new Date().getFullYear()} All Rights Reserved </div>
       </div>
 
       {/* Right / Login Panel */}

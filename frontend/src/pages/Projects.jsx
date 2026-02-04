@@ -18,7 +18,7 @@ import {
   PROJECT_CATEGORIES,
 } from "../services/projectsApi";
 
-import { listUsersForAssign } from "../services/tasksApi";
+import { listUsers } from "../services/usersApi";
 
 export default function Projects() {
   const notify = useNotify();
@@ -33,7 +33,7 @@ export default function Projects() {
   const [mode, setMode] = React.useState("create");
   const [selected, setSelected] = React.useState(null);
 
-  // Filters (same style as Tasks)
+  // Filters
   const [showMore, setShowMore] = React.useState(true);
   const [q, setQ] = React.useState("");
   const [status, setStatus] = React.useState("ALL");
@@ -47,9 +47,9 @@ export default function Projects() {
     setLoading(true);
     setError("");
     try {
-      const [p, u] = await Promise.all([listProjects(), listUsersForAssign()]);
-      setProjects(p || []);
-      setUsers(u || []);
+      const [p, u] = await Promise.all([listProjects(), listUsers()]);
+      setProjects(Array.isArray(p) ? p : []);
+      setUsers(Array.isArray(u) ? u : []);
     } catch (e) {
       const msg = e?.message || "Failed to load projects";
       setError(msg);
@@ -63,11 +63,15 @@ export default function Projects() {
     load();
   }, [load]);
 
-  const userName = (id) => {
-    if (!id) return "—";
-    const u = users.find((x) => x.id === id);
-    return u ? u.name : "Unknown";
-  };
+  const userName = React.useCallback(
+    (id) => {
+      if (!id) return "—";
+      const key = String(id);
+      const u = users.find((x) => String(x.id || x._id) === key);
+      return u?.name || "Unknown";
+    },
+    [users]
+  );
 
   const clearAll = () => {
     setQ("");
@@ -86,17 +90,16 @@ export default function Projects() {
     const toTs = toDate ? new Date(toDate + "T23:59:59").getTime() : null;
 
     return projects.filter((p) => {
-      const matchesText =
-        !text ||
-        (p.name || "").toLowerCase().includes(text) ||
-        (p.owner || "").toLowerCase().includes(text);
+      const name = String(p.name || "").toLowerCase();
+      const owner = String(p.ownerName || p.owner || "").toLowerCase();
 
-      const matchesStatus = status === "ALL" || p.status === status;
-      const matchesAssignee = assigneeId === "ALL" || (p.assigneeId || "") === assigneeId;
-      const matchesPriority = priority === "ALL" || (p.priority || "MEDIUM") === priority;
-      const matchesCategory = category === "ALL" || (p.category || "OTHER") === category;
+      const matchesText = !text || name.includes(text) || owner.includes(text);
+      const matchesStatus = status === "ALL" || String(p.status || "") === status;
+      const matchesAssignee = assigneeId === "ALL" || String(p.assigneeId || "") === assigneeId;
+      const matchesPriority = priority === "ALL" || String(p.priority || "MEDIUM") === priority;
+      const matchesCategory = category === "ALL" || String(p.category || "OTHER") === category;
 
-      const ts = p.updatedAt || 0;
+      const ts = typeof p.updatedAt === "number" ? p.updatedAt : p.updatedAt ? new Date(p.updatedAt).getTime() : 0;
       const matchesFrom = fromTs == null || ts >= fromTs;
       const matchesTo = toTs == null || ts <= toTs;
 
@@ -149,19 +152,25 @@ export default function Projects() {
     <div>
       <PageHeader
         title="Projects"
-        subtitle="Track and manage project progress"
-        actions={<Button variant="primary" onClick={openCreate}>+ New Project</Button>}
+        subtitle="Create, assign, and track projects"
+        actions={
+          <Button variant="primary" onClick={openCreate}>
+            + New Project
+          </Button>
+        }
       />
 
       {/* Filters */}
       <Card style={{ marginBottom: 12 }}>
         <div style={styles.filtersTop}>
-          <div style={{ fontSize: 22, fontWeight: 950 }}>Filters</div>
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          <div style={{ fontSize: 26, fontWeight: 950, color: "#0f172a" }}>Filters</div>
+          <div style={{ display: "flex", gap: 18, alignItems: "center" }}>
             <button type="button" onClick={() => setShowMore((s) => !s)} style={styles.linkBtn}>
               {showMore ? "Less Filters" : "More Filters"}
             </button>
-            <button type="button" onClick={clearAll} style={styles.linkBtnStrong}>Clear All</button>
+            <button type="button" onClick={clearAll} style={styles.linkBtnStrong}>
+              Clear All
+            </button>
           </div>
         </div>
 
@@ -175,7 +184,9 @@ export default function Projects() {
             <div style={styles.label}>Status</div>
             <select value={status} onChange={(e) => setStatus(e.target.value)} style={styles.select}>
               <option value="ALL">All Statuses</option>
-              {PROJECT_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+              {PROJECT_STATUSES.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
             </select>
           </div>
 
@@ -183,7 +194,9 @@ export default function Projects() {
             <div style={styles.label}>Assigned To</div>
             <select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} style={styles.select}>
               <option value="ALL">All Assignees</option>
-              {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+              {users.map((u) => (
+                <option key={u.id} value={String(u.id)}>{u.name}</option>
+              ))}
             </select>
           </div>
 
@@ -193,7 +206,9 @@ export default function Projects() {
                 <div style={styles.label}>Priority</div>
                 <select value={priority} onChange={(e) => setPriority(e.target.value)} style={styles.select}>
                   <option value="ALL">All Priorities</option>
-                  {PROJECT_PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
+                  {PROJECT_PRIORITIES.map((p) => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
                 </select>
               </div>
 
@@ -201,13 +216,15 @@ export default function Projects() {
                 <div style={styles.label}>Category</div>
                 <select value={category} onChange={(e) => setCategory(e.target.value)} style={styles.select}>
                   <option value="ALL">All Categories</option>
-                  {PROJECT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                  {PROJECT_CATEGORIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
                 </select>
               </div>
 
               <div>
                 <div style={styles.label}>Date Range</div>
-                <div style={{ display: "flex", gap: 10 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
                   <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} style={styles.input} />
                   <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} style={styles.input} />
                 </div>
@@ -225,41 +242,50 @@ export default function Projects() {
           <Table>
             <thead>
               <tr>
-                <Th>Name</Th>
+                <Th>Title</Th>
                 <Th>Owner</Th>
                 <Th>Assigned To</Th>
                 <Th>Status</Th>
-                <Th>Progress</Th>
+                <Th>Priority</Th>
+                <Th>Category</Th>
                 <Th>Updated</Th>
                 <Th>Actions</Th>
               </tr>
             </thead>
+
             <tbody>
-              {filtered.map((p) => (
-                <tr key={p.id}>
-                  <Td>
-                    <Link to={`/projects/${p.id}`} style={styles.link}>
-                      {p.name}
-                    </Link>
-                  </Td>
-                  <Td>{p.owner}</Td>
-                  <Td>{userName(p.assigneeId)}</Td>
-                  <Td><Pill>{p.status}</Pill></Td>
-                  <Td>{Number(p.progress || 0)}%</Td>
-                  <Td>{formatTime(p.updatedAt)}</Td>
-                  <Td>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <Button variant="ghost" onClick={() => openEdit(p)}>Edit</Button>
-                      <Button variant="danger" onClick={() => onDelete(p)}>Delete</Button>
-                    </div>
-                  </Td>
-                </tr>
-              ))}
               {filtered.length === 0 ? (
                 <tr>
-                  <Td colSpan={7}>No projects match your filters.</Td>
+                  <Td colSpan={8} style={{ padding: 16, color: "#64748b" }}>
+                    No projects match your filters.
+                  </Td>
                 </tr>
-              ) : null}
+              ) : (
+                filtered.map((p) => (
+                  <tr key={p.id}>
+                    <Td>
+                      <div style={{ display: "grid", gap: 4 }}>
+                        <Link to={`/projects/${p.id}`} style={styles.titleLink}>
+                          {p.name}
+                        </Link>
+                        {p.description ? <div style={styles.subText}>{p.description}</div> : null}
+                      </div>
+                    </Td>
+                    <Td>{p.ownerName || p.owner || "—"}</Td>
+                    <Td>{userName(p.assigneeId)}</Td>
+                    <Td><Pill>{p.status}</Pill></Td>
+                    <Td><Pill tone="neutral">{p.priority || "MEDIUM"}</Pill></Td>
+                    <Td><Pill tone="neutral">{p.category || "OTHER"}</Pill></Td>
+                    <Td>{formatTime(p.updatedAt)}</Td>
+                    <Td>
+                      <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                        <Button variant="ghost" onClick={() => openEdit(p)}>Edit</Button>
+                        <Button variant="danger" onClick={() => onDelete(p)}>Delete</Button>
+                      </div>
+                    </Td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </Table>
         </Card>
@@ -269,6 +295,7 @@ export default function Projects() {
         open={open}
         mode={mode}
         initial={selected}
+        users={users}
         onClose={() => setOpen(false)}
         onSubmit={onSubmit}
       />
@@ -276,28 +303,36 @@ export default function Projects() {
   );
 }
 
-function Pill({ children }) {
-  return <span style={styles.pill}>{children}</span>;
+function Pill({ children, tone = "status" }) {
+  const style =
+    tone === "status"
+      ? styles.pill
+      : { ...styles.pill, background: "#f1f5f9", color: "#334155" };
+  return <span style={style}>{children}</span>;
 }
 
 function formatTime(ts) {
   if (!ts) return "—";
-  return new Date(ts).toLocaleString();
+  const d = typeof ts === "number" ? new Date(ts) : new Date(ts);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString();
 }
 
 const styles = {
   error: { background: "#fee2e2", borderColor: "#fecaca", color: "#991b1b" },
 
-  filtersTop: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14 },
-  linkBtn: { border: "none", background: "transparent", cursor: "pointer", color: "#6b7280", fontWeight: 800 },
-  linkBtnStrong: { border: "none", background: "transparent", cursor: "pointer", color: "#1f3a8a", fontWeight: 900 },
+  filtersTop: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 18 },
+  linkBtn: { border: "none", background: "transparent", cursor: "pointer", color: "#64748b", fontWeight: 900 },
+  linkBtnStrong: { border: "none", background: "transparent", cursor: "pointer", color: "#1d4ed8", fontWeight: 950 },
 
-  filtersGrid: { display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 14 },
-  label: { fontSize: 13, fontWeight: 900, color: "#374151", marginBottom: 6 },
-  input: { width: "100%", padding: 12, borderRadius: 12, border: "1px solid #e5e7eb", outline: "none" },
-  select: { width: "100%", padding: 12, borderRadius: 12, border: "1px solid #e5e7eb", background: "white" },
+  filtersGrid: { display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 18 },
+  label: { fontSize: 13, fontWeight: 950, color: "#334155", marginBottom: 8 },
 
-  link: { textDecoration: "none", fontWeight: 950, color: "#111827" },
+  input: { width: "100%", padding: "12px 14px", borderRadius: 14, border: "1px solid #e5e7eb", outline: "none" },
+  select: { width: "100%", padding: "12px 14px", borderRadius: 14, border: "1px solid #e5e7eb", outline: "none", background: "white" },
 
-  pill: { display: "inline-block", padding: "4px 10px", borderRadius: 999, fontSize: 12, fontWeight: 900, background: "#f3f4f6", color: "#374151" },
+  titleLink: { textDecoration: "none", fontWeight: 950, color: "#0f172a", fontSize: 16, lineHeight: 1.2 },
+  subText: { color: "#64748b", fontSize: 13, lineHeight: 1.3 },
+
+  pill: { display: "inline-flex", alignItems: "center", padding: "6px 12px", borderRadius: 999, fontSize: 12, fontWeight: 950, background: "#f1f5f9", color: "#334155" },
 };

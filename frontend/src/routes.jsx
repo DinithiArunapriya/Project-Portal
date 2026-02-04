@@ -5,8 +5,11 @@ import DefaultLayout from "./layouts/DefaultLayout";
 import DashboardLayout from "./layouts/DashboardLayout";
 import ProtectedRoute from "./auth/ProtectedRoute";
 import RequireRole from "./auth/RequireRole";
+import RequireCap from "./auth/RequireCap";
+import { CAP } from "./auth/permissions";
 
 import Login from "./pages/Login";
+import AuthLogin from "./pages/AuthLogin"; 
 import Dashboard from "./pages/Dashboard";
 
 import Projects from "./pages/Projects";
@@ -26,17 +29,22 @@ import EmailMappings from "./pages/EmailMappings";
 import AuthDemo from "./pages/AuthDemo";
 
 import NotFound from "./pages/NotFound";
-import RequireCap from "./auth/RequireCap";
-import { CAP } from "./auth/permissions";
 
 export const routes = [
-  // Public
+  // ─────────────────────────────
+  // Public routes
+  // ─────────────────────────────
   {
     element: <DefaultLayout />,
-    children: [{ path: "/login", element: <Login /> }],
+    children: [
+      { path: "/login", element: <Login /> },          // existing demo login
+      { path: "/auth-login", element: <AuthLogin /> }, // ✅ NEW simple right-pane login
+    ],
   },
 
-  // Protected
+  // ─────────────────────────────
+  // Protected routes
+  // ─────────────────────────────
   {
     element: <ProtectedRoute />,
     children: [
@@ -46,42 +54,41 @@ export const routes = [
           { path: "/", element: <Navigate to="/dashboard" replace /> },
           { path: "/dashboard", element: <Dashboard /> },
 
+          // Projects
           { path: "/projects", element: <Projects /> },
           { path: "/projects/:id", element: <ProjectDetails /> },
 
-          { path: "/users", element: <Users /> },
+          // Users
+          {
+            path: "/users",
+            element: (
+              <RequireCap cap={CAP.VIEW_USERS}>
+                <Users />
+              </RequireCap>
+            ),
+          },
 
+          // Tasks
           { path: "/tasks", element: <Tasks /> },
           { path: "/tasks/:id", element: <TaskDetails /> },
 
+          // Reports & Settings
           { path: "/reports", element: <Reports /> },
           { path: "/settings", element: <Settings /> },
-          {
-  path: "/users",
-  element: (
-    <RequireCap cap={CAP.VIEW_USERS}>
-      <Users />
-    </RequireCap>
-  ),
-},
-{
-  path: "/admin",
-  element: (
-    <RequireCap cap={CAP.VIEW_ADMIN}>
-      <AdminDashboard />
-    </RequireCap>
-  ),
-},
 
-          // Admin
+          // Admin dashboard
           {
             path: "/admin",
             element: (
-              <RequireRole allow={["SUPER_ADMIN", "MANAGER"]}>
-                <AdminDashboard />
-              </RequireRole>
+              <RequireCap cap={CAP.VIEW_ADMIN}>
+                <RequireRole allow={["SUPER_ADMIN", "MANAGER"]}>
+                  <AdminDashboard />
+                </RequireRole>
+              </RequireCap>
             ),
           },
+
+          // Admin sub-routes
           {
             path: "/admin/roles",
             element: (
@@ -105,14 +112,17 @@ export const routes = [
                 <AuthDemo />
               </RequireRole>
             ),
-            
           },
         ],
       },
     ],
   },
 
+  // ─────────────────────────────
   // 404
-  { path: "*", element: <NotFound /> },
+  // ─────────────────────────────
+  {
+    path: "*",
+    element: <NotFound />,
+  },
 ];
-

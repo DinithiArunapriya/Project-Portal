@@ -86,7 +86,7 @@ export default function AdminDashboard() {
         return d >= monthStart;
       }).length;
 
-      // Mock numbers for now (replace when backend is ready)
+      // Mock numbers for now 
       const activeSessions = Math.max(1, Math.floor(all.length * 0.3));
       const usersOnlineNow = Math.max(0, Math.floor(all.length * 0.1));
       const emailMappings = 6; // TODO: replace with real store/API later
@@ -110,7 +110,7 @@ export default function AdminDashboard() {
   const refreshActivity = React.useCallback(async () => {
     setLoadingActivity(true);
     try {
-      // Mock activity feed (replace with API later)
+      // Mock activity feed 
       await new Promise((r) => setTimeout(r, 700));
       setRecentActivity([
         {
@@ -239,13 +239,7 @@ export default function AdminDashboard() {
         <h2 style={styles.cardTitle}>Quick Actions</h2>
 
         <div style={styles.actionsGrid}>
-          <ActionLink
-            to="/admin/roles"
-            title="Manage User Roles"
-            desc="Assign and modify user permissions"
-            icon="👤"
-          />
-
+      
           <ActionLink
             to="/admin/email-mappings"
             title="Email Role Mappings"
@@ -556,13 +550,7 @@ const styles = {
   <h2 style={styles.cardTitle}>Quick Actions</h2>
 
   <div style={styles.actionsGrid}>
-    <ActionLink
-      to="/admin/roles"
-      title="Manage User Roles"
-      desc="Assign and modify user permissions"
-      icon="👤"
-    />
-
+   
     <ActionLink
       to="/users"
       title="User Management"
