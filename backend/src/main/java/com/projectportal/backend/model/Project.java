@@ -1,4 +1,4 @@
-package com.projectportal.project.model;
+package com.projectportal.backend.model;
 
 import jakarta.persistence.*;
 import java.time.LocalDate;
