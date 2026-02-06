@@ -3,56 +3,55 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { useNotify } from "../notifications/NotificationProvider";
+import { loginWithEmail } from "../services/authApi";
 
 const DEMO_USERS = [
   {
-    id: "u_super",
-    name: "Dinithi Arunapriya",
-    email: "dinithiarunapriya@demo.com",
+    id: "u_super_admin",
+    name: "Super Admin",
+    email: "superadmin@portal.test",
+    password: "Super@123",
     role: "SUPER_ADMIN",
-    dept: "IT Management",
+    dept: "Admin",
   },
   {
     id: "u_mgr",
-    name: "Sarah Johnson",
-    email: "sarah.johnson@demo.com",
+    name: "Manager",
+    email: "manager@portal.test",
+    password: "Manager@123",
     role: "MANAGER",
-    dept: "Project Management",
+    dept: "Management",
   },
   {
     id: "u_dev",
-    name: "Michael Chen",
-    email: "michael.chen@demo.com",
+    name: "Developer",
+    email: "developer@portal.test",
+    password: "Developer@123",
     role: "DEVELOPER",
     dept: "Engineering",
   },
   {
-    id: "u_ba",
-    name: "Aisha Rahman",
-    email: "aisha.rahman@demo.com",
-    role: "BUSINESS_ANALYST",
-    dept: "Business Analysis",
-  },
-  {
     id: "u_des",
-    name: "David Kim",
-    email: "david.kim@demo.com",
+    name: "Designer",
+    email: "designer@portal.test",
+    password: "Designer@123",
     role: "DESIGNER",
     dept: "Design",
   },
-
-{
-    id: "u_des",
-    name: "Shang Wong",
-    email: "shang.wong@demo.com",
+  {
+    id: "u_qa",
+    name: "QA Engineer",
+    email: "qa@portal.test",
+    password: "Qa@123",
     role: "QA",
-    dept: "Quality Assurance",
+    dept: "Quality",
   },
 
   {
     id: "u_hr",
-    name: "Lisa Wang",
-    email: "lisa.wang@demo.com",
+    name: "HR",
+    email: "hr@portal.test",
+    password: "Hr@123",
     role: "HR",
     dept: "Human Resources",
   },
@@ -70,10 +69,6 @@ const ROLE_META = {
   DEVELOPER: {
     title: "Developer",
     desc: "Work on assigned tasks and projects",
-  },
-  BUSINESS_ANALYST: {
-    title: "Business Analyst",
-    desc: "Requirements, tracking, and insights",
   },
   DESIGNER: {
     title: "Designer",
@@ -183,23 +178,25 @@ export default function Login() {
   const grouped = React.useMemo(() => groupUsersByRole(DEMO_USERS), []);
   const roleCount = Object.keys(grouped).length;
 
-  const onPickUser = (u) => {
-    login({
-      id: u.id,
-      name: u.name,
-      email: u.email,
-      role: u.role,
-      department: u.dept,
-      // you can add anything else your app expects here (permissions, expiresAt, etc.)
-    });
+  const onPickUser = async (u) => {
+    try {
+      const result = await loginWithEmail(u.email, u.password);
+      login({ token: result?.token, user: result?.user });
 
-    notify({
-      type: "success",
-      title: "Signed in",
-      message: `Welcome ${u.name} (${u.role})`,
-    });
+      notify({
+        type: "success",
+        title: "Signed in",
+        message: `Welcome ${result?.user?.name || u.name} (${result?.user?.role || u.role})`,
+      });
 
-    navigate("/dashboard");
+      navigate("/dashboard");
+    } catch (e) {
+      notify({
+        type: "error",
+        title: "Login failed",
+        message: e?.message || "Could not sign in",
+      });
+    }
   };
 
   return (
@@ -222,7 +219,7 @@ export default function Login() {
           </div>
 
           <div style={styles.statsGrid}>
-            <StatCard value="7" label="Demo Users" />
+            <StatCard value={String(DEMO_USERS.length)} label="Demo Users" />
             <StatCard value="5" label="Sample Projects" />
             <StatCard value={String(roleCount)} label="User Roles" />
           </div>

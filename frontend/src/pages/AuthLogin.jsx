@@ -1,73 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-
-
-const DEMO_USERS = [
-  {
-    id: "u_super_admin",
-    name: "Super Admin",
-    email: "superadmin@portal.test",
-    password: "Super@123",
-    role: "SUPER_ADMIN",
-    department: "Administration",
-    isActive: true,
-  },
-  {
-    id: "u_manager",
-    name: "Manager",
-    email: "manager@portal.test",
-    password: "Manager@123",
-    role: "MANAGER",
-    department: "Management",
-    isActive: true,
-  },
-  {
-    id: "u_dev",
-    name: "Developer",
-    email: "developer@portal.test",
-    password: "Developer@123",
-    role: "DEVELOPER",
-    department: "Engineering",
-    isActive: true,
-  },
-  {
-    id: "u_qa",
-    name: "QA Engineer",
-    email: "qa@portal.test",
-    password: "Qa@123",
-    role: "QA",
-    department: "Quality",
-    isActive: true,
-  },
-  {
-    id: "u_designer",
-    name: "Designer",
-    email: "designer@portal.test",
-    password: "Designer@123",
-    role: "DESIGNER",
-    department: "Design",
-    isActive: true,
-  },
-  {
-    id: "u_hr",
-    name: "HR",
-    email: "hr@portal.test",
-    password: "Hr@123",
-    role: "HR",
-    department: "Human Resources",
-    isActive: true,
-  },
-];
-
-function seedUsersIfMissing() {
-  try {
-    const existing = JSON.parse(localStorage.getItem("users")) || [];
-    if (Array.isArray(existing) && existing.length > 0) return;
-    localStorage.setItem("users", JSON.stringify(DEMO_USERS));
-  } catch {
-    // silent (demo)
-  }
-}
+import { useAuth } from "../auth/AuthProvider";
+import { loginWithEmail } from "../services/authApi";
 
 const redirectByRole = (role, navigate) => {
   const r = String(role || "").trim().toUpperCase();
@@ -110,49 +44,24 @@ const redirectByRole = (role, navigate) => {
 
 export default function AuthLogin() {
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [error, setError] = React.useState("");
 
-  React.useEffect(() => {
-    seedUsersIfMissing();
-  }, []);
+  const onLogin = async (e) => {
+    e.preventDefault();
+    setError("");
 
-  const onLogin = (e) => {
-  e.preventDefault();
-  setError("");
-
-  let users = [];
-  try {
-    users = JSON.parse(localStorage.getItem("users")) || [];
-  } catch {
-    users = [];
-  }
-
-  if (!users.length) {
-    setError("No users available. Contact Super Admin.");
-    return;
-  }
-
-  const user = users.find(
-    (u) =>
-      String(u.email || "").toLowerCase() === email.trim().toLowerCase() &&
-      String(u.password || "") === password &&
-      u.isActive !== false
-  );
-
-  if (!user) {
-    setError("Invalid email or password");
-    return;
-  }
-
-  // ✅ Save session
-  localStorage.setItem("authUser", JSON.stringify(user));
-
-  // ✅ ROLE-BASED REDIRECT
-  redirectByRole(user.role, navigate);
-};
+    try {
+      const result = await loginWithEmail(email, password);
+      login({ token: result?.token, user: result?.user });
+      redirectByRole(result?.user?.role, navigate);
+    } catch (err) {
+      setError(err?.message || "Invalid email or password");
+    }
+  };
 
   return (
     <div style={styles.page}>

@@ -11,7 +11,7 @@ export default function UserModal({ open, mode, initial, onClose, onSubmit }) {
     name: "",
     email: "",
     department: "",
-    role: "VIEWER",
+    role: "DEVELOPER",
     isActive: true,
     password: "",
   });
@@ -24,7 +24,7 @@ export default function UserModal({ open, mode, initial, onClose, onSubmit }) {
         name: initial.name || "",
         email: initial.email || "",
         department: initial.department || "",
-        role: initial.role || "VIEWER",
+        role: initial.role || "DEVELOPER",
         isActive: initial.isActive ?? true,
         password: "", // blank by default on edit
       });
@@ -33,7 +33,7 @@ export default function UserModal({ open, mode, initial, onClose, onSubmit }) {
         name: "",
         email: "",
         department: "",
-        role: "VIEWER",
+        role: "DEVELOPER",
         isActive: true,
         password: "",
       });

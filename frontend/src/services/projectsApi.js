@@ -1,123 +1,52 @@
-// src/services/projectsApi.js
-const PROJECTS_KEY = "pp_projects_v1";
+import { api } from "./apiClient";
 
-export const PROJECT_STATUSES = ["PLANNING", "IN_PROGRESS", "ON_HOLD", "COMPLETED", "AT_RISK"];
-export const PROJECT_PRIORITIES = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
-export const PROJECT_CATEGORIES = ["OTHER", "ENGINEERING", "DESIGN", "MARKETING", "SALES", "HR"];
-
-function now() {
-  return Date.now();
-}
-
-function seed() {
-  const existing = localStorage.getItem(PROJECTS_KEY);
-  if (existing) return;
-
-  const projects = [
-    {
-      id: "p2",
-      name: "Mobile App MVP",
-      description: "Finalize MVP features and acceptance criteria.",
-      ownerName: "Emily Rodriguez",
-      ownerId: "u1",
-      assigneeId: "u2",
-      status: "PLANNING",
-      priority: "MEDIUM",
-      category: "ENGINEERING",
-      startDate: "2026-02-01",
-      endDate: "2026-02-28",
-      updatedAt: now(),
-      createdAt: now(),
-    },
-    {
-      id: "p3",
-      name: "Website Redesign",
-      description: "Header + Sidebar + protected routes.",
-      ownerName: "Emily Rodriguez",
-      ownerId: "u1",
-      assigneeId: "u3",
-      status: "IN_PROGRESS",
-      priority: "HIGH",
-      category: "DESIGN",
-      startDate: "2026-01-10",
-      endDate: "2026-02-20",
-      updatedAt: now(),
-      createdAt: now(),
-    },
-  ];
-
-  localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
-}
-
-seed();
-
-function readAll() {
-  const raw = localStorage.getItem(PROJECTS_KEY);
-  return raw ? JSON.parse(raw) : [];
-}
-
-function writeAll(rows) {
-  localStorage.setItem(PROJECTS_KEY, JSON.stringify(rows));
-}
+export const PROJECT_STATUSES = ["PLANNING", "IN_PROGRESS", "ON_HOLD", "DONE"];
+export const PROJECT_PRIORITIES = ["LOW", "MEDIUM", "HIGH"];
+export const PROJECT_CATEGORIES = ["INTERNAL", "CLIENT", "MAINTENANCE", "OTHER"];
 
 export async function listProjects() {
-  return readAll().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  return api.get("/projects");
 }
 
 export async function getProjectById(id) {
-  const rows = readAll();
-  return rows.find((p) => String(p.id) === String(id)) || null;
+  return api.get(`/projects/${id}`);
 }
 
 export async function createProject(payload) {
-  const rows = readAll();
+  if (!payload?.name?.trim()) throw new Error("Project name is required");
 
-  const id = payload.id?.trim()
-    ? payload.id.trim()
-    : "p_" + Math.random().toString(16).slice(2) + Date.now().toString(16);
-
-  if (rows.some((p) => String(p.id) === String(id))) {
-    throw new Error("Project ID already exists. Use a different ID.");
-  }
-
-  const p = {
-    id,
-    name: payload.name || "Untitled",
-    description: payload.description || "",
-    ownerName: payload.ownerName || "",
+  return api.post("/projects", {
+    id: payload.id || undefined,
+    name: payload.name.trim(),
+    owner: payload.owner || payload.ownerName || "",
     ownerId: payload.ownerId || null,
     assigneeId: payload.assigneeId || null,
     status: payload.status || "PLANNING",
     priority: payload.priority || "MEDIUM",
     category: payload.category || "OTHER",
+    progress: payload.progress ?? 0,
+    description: payload.description || "",
     startDate: payload.startDate || "",
     endDate: payload.endDate || "",
-    createdAt: now(),
-    updatedAt: now(),
-  };
-
-  rows.push(p);
-  writeAll(rows);
-  return p;
+  });
 }
 
 export async function updateProject(id, patch) {
-  const rows = readAll();
-  const idx = rows.findIndex((p) => String(p.id) === String(id));
-  if (idx === -1) throw new Error("Project not found");
-
-  rows[idx] = {
-    ...rows[idx],
-    ...patch,
-    updatedAt: now(),
-  };
-
-  writeAll(rows);
-  return rows[idx];
+  return api.put(`/projects/${id}`, {
+    name: patch?.name,
+    owner: patch?.owner || patch?.ownerName,
+    ownerId: patch?.ownerId,
+    assigneeId: patch?.assigneeId,
+    status: patch?.status,
+    priority: patch?.priority,
+    category: patch?.category,
+    progress: patch?.progress,
+    description: patch?.description,
+    startDate: patch?.startDate,
+    endDate: patch?.endDate,
+  });
 }
 
 export async function deleteProject(id) {
-  const rows = readAll();
-  writeAll(rows.filter((p) => String(p.id) !== String(id)));
-  return true;
+  return api.del(`/projects/${id}`);
 }

@@ -133,7 +133,7 @@ export default function ProjectDetails() {
         <div>
           <h1 style={styles.h1}>{project.name || "Project"}</h1>
           <div style={styles.subLine}>
-            <span>Owner: {project.ownerName || getUserName(project.ownerId) || "—"}</span>
+            <span>Owner: {project.owner || getUserName(project.ownerId) || "—"}</span>
             <span style={styles.dot}>•</span>
             <span>Status: {String(project.status || "PLANNING")}</span>
           </div>

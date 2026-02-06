@@ -10,6 +10,7 @@ async function listTasks(req, res) {
     assigneeId: t.assigneeId,
     status: t.status,
     priority: t.priority,
+    category: t.category || "OTHER",
     dueDate: t.dueDate,
     createdAt: t.createdAt,
     updatedAt: t.updatedAt
@@ -27,6 +28,7 @@ async function listTasksByProject(req, res) {
     assigneeId: t.assigneeId,
     status: t.status,
     priority: t.priority,
+    category: t.category || "OTHER",
     dueDate: t.dueDate,
     updatedAt: t.updatedAt
   })));
@@ -45,6 +47,7 @@ async function getTaskById(req, res) {
     assigneeId: t.assigneeId,
     status: t.status,
     priority: t.priority,
+    category: t.category || "OTHER",
     dueDate: t.dueDate,
     createdAt: t.createdAt,
     updatedAt: t.updatedAt
@@ -64,10 +67,23 @@ async function createTask(req, res) {
     assigneeId: payload.assigneeId || null,
     status: payload.status || "TODO",
     priority: payload.priority || "MEDIUM",
+    category: payload.category || "OTHER",
     dueDate: payload.dueDate || ""
   });
 
-  res.status(201).json({ id: created.id || created._id.toString() });
+  res.status(201).json({
+    id: created.id || created._id.toString(),
+    projectId: created.projectId,
+    title: created.title,
+    description: created.description,
+    assigneeId: created.assigneeId,
+    status: created.status,
+    priority: created.priority,
+    category: created.category || "OTHER",
+    dueDate: created.dueDate,
+    createdAt: created.createdAt,
+    updatedAt: created.updatedAt
+  });
 }
 
 async function updateTask(req, res) {
@@ -83,6 +99,7 @@ async function updateTask(req, res) {
     assigneeId: payload.assigneeId ?? t.assigneeId,
     status: payload.status ?? t.status,
     priority: payload.priority ?? t.priority,
+    category: payload.category ?? t.category,
     dueDate: payload.dueDate ?? t.dueDate
   });
 
@@ -108,6 +125,7 @@ async function myTasks(req, res) {
     assigneeId: t.assigneeId,
     status: t.status,
     priority: t.priority,
+    category: t.category || "OTHER",
     dueDate: t.dueDate,
     updatedAt: t.updatedAt
   })));

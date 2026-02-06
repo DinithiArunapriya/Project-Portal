@@ -12,6 +12,7 @@ const taskSchema = new mongoose.Schema(
     assigneeId: { type: String, default: null, index: true },
     status: { type: String, enum: TASK_STATUSES, default: "TODO" },
     priority: { type: String, enum: TASK_PRIORITIES, default: "MEDIUM" },
+    category: { type: String, default: "OTHER" },
     dueDate: { type: String, default: "" } // YYYY-MM-DD for easy frontend
   },
   { timestamps: true }

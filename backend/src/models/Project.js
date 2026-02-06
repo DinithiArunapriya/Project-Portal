@@ -8,13 +8,16 @@ const projectSchema = new mongoose.Schema(
   {
     id: { type: String, unique: true, index: true }, // optional custom id
     name: { type: String, required: true },
+    description: { type: String, default: "" },
     owner: { type: String, default: "" }, // display string
     ownerId: { type: String, default: null },
     assigneeId: { type: String, default: null },
     status: { type: String, enum: PROJECT_STATUSES, default: "PLANNING" },
     priority: { type: String, enum: PROJECT_PRIORITIES, default: "MEDIUM" },
     category: { type: String, enum: PROJECT_CATEGORIES, default: "OTHER" },
-    progress: { type: Number, default: 0 }
+    progress: { type: Number, default: 0 },
+    startDate: { type: String, default: "" },
+    endDate: { type: String, default: "" }
   },
   { timestamps: true }
 );

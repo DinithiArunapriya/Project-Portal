@@ -159,7 +159,7 @@ export default function Reports() {
       const q = searchQuery.trim().toLowerCase();
       result = result.filter((p) => {
         const name = String(p.name || "").toLowerCase();
-        const assigneeName = getUserName(p.assignedTo).toLowerCase();
+        const assigneeName = getUserName(p.assigneeId).toLowerCase();
         return name.includes(q) || assigneeName.includes(q);
       });
     }
@@ -380,7 +380,7 @@ export default function Reports() {
                     <div style={{ fontWeight: 950, fontSize: 16 }}>{p.name}</div>
                     <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
                       <Badge text={String(p.status || "OTHER")} />
-                      <Badge text={String(p.department || "N/A")} tone="neutral" />
+                      <Badge text={String(p.category || "N/A")} tone="neutral" />
                     </div>
                   </div>
 
@@ -403,7 +403,7 @@ export default function Reports() {
                 </div>
 
                 <div style={{ marginTop: 10, color: "#6b7280", fontSize: 13 }}>
-                  Assigned to: <b style={{ color: "#111827" }}>{getUserName(p.assignedTo)}</b>
+                  Assigned to: <b style={{ color: "#111827" }}>{getUserName(p.assigneeId)}</b>
                 </div>
               </div>
             ))}
@@ -487,8 +487,8 @@ function exportCSV(projects, users) {
     name: p.name,
     status: p.status,
     progress: p.progress,
-    department: p.department || "",
-    assignedTo: userNameById.get(p.assignedTo) || "",
+    category: p.category || "",
+    assignedTo: userNameById.get(p.assigneeId) || "",
     startDate: p.startDate || "",
     endDate: p.endDate || p.deadline || "",
     updatedAt: p.updatedAt ? new Date(p.updatedAt).toISOString() : "",

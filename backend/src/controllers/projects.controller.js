@@ -5,6 +5,7 @@ async function listProjects(req, res) {
   res.json(projects.map(p => ({
     id: p.id || p._id.toString(),
     name: p.name,
+    description: p.description || "",
     owner: p.owner || "",
     ownerId: p.ownerId || null,
     assigneeId: p.assigneeId || null,
@@ -12,6 +13,8 @@ async function listProjects(req, res) {
     priority: p.priority,
     category: p.category,
     progress: p.progress || 0,
+    startDate: p.startDate || "",
+    endDate: p.endDate || "",
     createdAt: p.createdAt,
     updatedAt: p.updatedAt
   })));
@@ -25,6 +28,7 @@ async function getProjectById(req, res) {
   res.json({
     id: p.id || p._id.toString(),
     name: p.name,
+    description: p.description || "",
     owner: p.owner || "",
     ownerId: p.ownerId || null,
     assigneeId: p.assigneeId || null,
@@ -32,6 +36,8 @@ async function getProjectById(req, res) {
     priority: p.priority,
     category: p.category,
     progress: p.progress || 0,
+    startDate: p.startDate || "",
+    endDate: p.endDate || "",
     createdAt: p.createdAt,
     updatedAt: p.updatedAt
   });
@@ -44,16 +50,34 @@ async function createProject(req, res) {
   const created = await Project.create({
     id: payload.id || undefined,
     name: payload.name,
+    description: payload.description || "",
     owner: payload.owner || "",
     ownerId: payload.ownerId || null,
     assigneeId: payload.assigneeId || null,
     status: payload.status || "PLANNING",
     priority: payload.priority || "MEDIUM",
     category: payload.category || "OTHER",
-    progress: Number(payload.progress || 0)
+    progress: Number(payload.progress || 0),
+    startDate: payload.startDate || "",
+    endDate: payload.endDate || ""
   });
 
-  res.status(201).json({ id: created.id || created._id.toString() });
+  res.status(201).json({
+    id: created.id || created._id.toString(),
+    name: created.name,
+    description: created.description || "",
+    owner: created.owner || "",
+    ownerId: created.ownerId || null,
+    assigneeId: created.assigneeId || null,
+    status: created.status,
+    priority: created.priority,
+    category: created.category,
+    progress: created.progress || 0,
+    startDate: created.startDate || "",
+    endDate: created.endDate || "",
+    createdAt: created.createdAt,
+    updatedAt: created.updatedAt
+  });
 }
 
 async function updateProject(req, res) {
@@ -64,13 +88,16 @@ async function updateProject(req, res) {
 
   Object.assign(p, {
     name: payload.name ?? p.name,
+    description: payload.description ?? p.description,
     owner: payload.owner ?? p.owner,
     ownerId: payload.ownerId ?? p.ownerId,
     assigneeId: payload.assigneeId ?? p.assigneeId,
     status: payload.status ?? p.status,
     priority: payload.priority ?? p.priority,
     category: payload.category ?? p.category,
-    progress: payload.progress != null ? Number(payload.progress) : p.progress
+    progress: payload.progress != null ? Number(payload.progress) : p.progress,
+    startDate: payload.startDate ?? p.startDate,
+    endDate: payload.endDate ?? p.endDate
   });
 
   await p.save();
