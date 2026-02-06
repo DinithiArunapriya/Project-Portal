@@ -1,6 +1,6 @@
 import { useState } from "react";
 import MainLayout from "../layouts/MainLayout";
-import axios from "axios";
+import { createProject } from "../services/projectsApi";
 import { FaInfoCircle, FaCalendarAlt, FaUsers, FaFileAlt, FaClipboardList } from "react-icons/fa";
 
 const steps = [
@@ -50,28 +50,35 @@ const AddProject = () => {
       return;
     }
 
+    const mapStatus = (s) => {
+      const val = String(s || "").toLowerCase();
+      if (val === "completed") return "DONE";
+      if (val === "on hold") return "ON_HOLD";
+      if (val === "ongoing") return "IN_PROGRESS";
+      return "PLANNING";
+    };
+
+    const mapPriority = (p) => {
+      const val = String(p || "").toLowerCase();
+      if (val === "high" || val === "urgent") return "HIGH";
+      if (val === "medium") return "MEDIUM";
+      return "LOW";
+    };
+
     const projectData = {
       name: projectName,
-      category,
-      status,
-      priority,
+      category: "OTHER",
+      status: mapStatus(status),
+      priority: mapPriority(priority),
       progress,
       startDate,
       endDate,
-      lead,
-      teamMembers,
-      company,
-      statusPhase,
-      deadline,
-      initiallyRaised,
-      responsiblePerson,
-      developers,
-      remarks,
-      comments,
+      owner: lead,
+      description: remarks || comments || "",
     };
 
     try {
-      await axios.post("http://localhost:8080/projects", projectData);
+      await createProject(projectData);
       alert("Project created successfully!");
       // Optional: redirect to dashboard or projects page
       window.location.href = "/dashboard";

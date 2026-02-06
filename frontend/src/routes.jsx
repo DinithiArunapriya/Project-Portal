@@ -55,8 +55,22 @@ export const routes = [
           { path: "/dashboard", element: <Dashboard /> },
 
           // Projects
-          { path: "/projects", element: <Projects /> },
-          { path: "/projects/:id", element: <ProjectDetails /> },
+          {
+            path: "/projects",
+            element: (
+              <RequireCap cap={CAP.EDIT_PROJECT_BASIC}>
+                <Projects />
+              </RequireCap>
+            ),
+          },
+          {
+            path: "/projects/:id",
+            element: (
+              <RequireCap cap={CAP.EDIT_PROJECT_BASIC}>
+                <ProjectDetails />
+              </RequireCap>
+            ),
+          },
 
           // Users
           {
@@ -69,12 +83,40 @@ export const routes = [
           },
 
           // Tasks
-          { path: "/tasks", element: <Tasks /> },
-          { path: "/tasks/:id", element: <TaskDetails /> },
+          {
+            path: "/tasks",
+            element: (
+              <RequireCap cap={CAP.EDIT_TASK_BASIC}>
+                <Tasks />
+              </RequireCap>
+            ),
+          },
+          {
+            path: "/tasks/:id",
+            element: (
+              <RequireCap cap={CAP.EDIT_TASK_BASIC}>
+                <TaskDetails />
+              </RequireCap>
+            ),
+          },
 
           // Reports & Settings
-          { path: "/reports", element: <Reports /> },
-          { path: "/settings", element: <Settings /> },
+          {
+            path: "/reports",
+            element: (
+              <RequireCap cap={CAP.VIEW_REPORTS}>
+                <Reports />
+              </RequireCap>
+            ),
+          },
+          {
+            path: "/settings",
+            element: (
+              <RequireCap cap={CAP.VIEW_SETTINGS}>
+                <Settings />
+              </RequireCap>
+            ),
+          },
 
           // Admin dashboard
           {

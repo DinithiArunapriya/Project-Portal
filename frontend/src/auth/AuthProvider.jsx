@@ -4,6 +4,7 @@ const AuthContext = createContext(null);
 
 export default function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Restore session from localStorage
@@ -11,22 +12,43 @@ export default function AuthProvider({ children }) {
     const raw = localStorage.getItem("auth_state_v1");
     if (raw) {
       try {
-        setUser(JSON.parse(raw));
+        const parsed = JSON.parse(raw);
+        setUser(parsed?.user || null);
+        setToken(parsed?.token || null);
       } catch {
         setUser(null);
+        setToken(null);
       }
     }
     setLoading(false);
   }, []);
 
-  const login = (userData) => {
-    localStorage.setItem("auth_state_v1", JSON.stringify(userData));
-    setUser(userData);
+  const login = (authData) => {
+    const payload = {
+      user: authData?.user || null,
+      token: authData?.token || null,
+    };
+    localStorage.setItem("auth_state_v1", JSON.stringify(payload));
+    setUser(payload.user);
+    setToken(payload.token);
+  };
+
+  const setUserAndPersist = (nextUser) => {
+    const payload = { user: nextUser, token };
+    localStorage.setItem("auth_state_v1", JSON.stringify(payload));
+    setUser(nextUser);
+  };
+
+  const setTokenAndPersist = (nextToken) => {
+    const payload = { user, token: nextToken };
+    localStorage.setItem("auth_state_v1", JSON.stringify(payload));
+    setToken(nextToken);
   };
 
   const logout = () => {
     localStorage.removeItem("auth_state_v1");
     setUser(null);
+    setToken(null);
   };
 
   return (
@@ -34,7 +56,10 @@ export default function AuthProvider({ children }) {
       value={{
         user,
         loading,
-        isAuthenticated: !!user,
+        token,
+        setUser: setUserAndPersist,
+        setToken: setTokenAndPersist,
+        isAuthenticated: !!user && !!token,
         login,
         logout,
       }}

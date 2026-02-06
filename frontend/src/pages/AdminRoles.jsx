@@ -30,9 +30,38 @@ export const ROLES = {
       { resource: "admin", actions: ["access"] },
     ],
   },
-  EMPLOYEE: {
-    name: "Employee",
-    hierarchy: 10,
+  HR: {
+    name: "HR",
+    hierarchy: 60,
+    permissions: [
+      { resource: "users", actions: ["read", "update"] },
+      { resource: "reports", actions: ["read"] },
+      { resource: "settings", actions: ["update"] },
+    ],
+  },
+  DEVELOPER: {
+    name: "Developer",
+    hierarchy: 40,
+    permissions: [
+      { resource: "projects", actions: ["read"] },
+      { resource: "tasks", actions: ["read", "update"] },
+      { resource: "reports", actions: ["read"] },
+      { resource: "settings", actions: ["update"] },
+    ],
+  },
+  QA: {
+    name: "QA",
+    hierarchy: 35,
+    permissions: [
+      { resource: "projects", actions: ["read"] },
+      { resource: "tasks", actions: ["read", "update"] },
+      { resource: "reports", actions: ["read"] },
+      { resource: "settings", actions: ["update"] },
+    ],
+  },
+  DESIGNER: {
+    name: "Designer",
+    hierarchy: 30,
     permissions: [
       { resource: "projects", actions: ["read"] },
       { resource: "tasks", actions: ["read", "update"] },
@@ -64,7 +93,10 @@ function getRoleDotColor(roleKey) {
   const colorMap = {
     SUPER_ADMIN: "#ef4444",
     MANAGER: "#a855f7",
-    EMPLOYEE: "#60a5fa",
+    HR: "#0ea5e9",
+    DEVELOPER: "#60a5fa",
+    QA: "#f97316",
+    DESIGNER: "#14b8a6",
   };
   return colorMap[roleKey] || "#9ca3af";
 }
@@ -74,13 +106,19 @@ function RoleBadge({ role }) {
   const bg = {
     SUPER_ADMIN: "#fee2e2",
     MANAGER: "#f3e8ff",
-    EMPLOYEE: "#dbeafe",
+    HR: "#e0f2fe",
+    DEVELOPER: "#dbeafe",
+    QA: "#ffedd5",
+    DESIGNER: "#ccfbf1",
   }[role] || "#f3f4f6";
 
   const fg = {
     SUPER_ADMIN: "#991b1b",
     MANAGER: "#6b21a8",
-    EMPLOYEE: "#1e40af",
+    HR: "#075985",
+    DEVELOPER: "#1e40af",
+    QA: "#9a3412",
+    DESIGNER: "#0f766e",
   }[role] || "#374151";
 
   return (
@@ -187,7 +225,7 @@ export default function AdminRoles() {
 
   const openRoleEditor = (u) => {
     setSelectedUser(u);
-    setNewRole(u?.role || "EMPLOYEE");
+    setNewRole(u?.role || "DEVELOPER");
     setShowRoleEditor(true);
   };
 

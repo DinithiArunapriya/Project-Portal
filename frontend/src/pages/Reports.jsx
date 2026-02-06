@@ -5,9 +5,13 @@ import { useNotify } from "../notifications/NotificationProvider";
 
 import { listProjects } from "../services/projectsApi";
 import { listUsers } from "../services/usersApi";
+import { usePerms } from "../auth/usePerms";
+import { CAP } from "../auth/permissions";
 
 export default function Reports() {
   const notify = useNotify();
+  const { can } = usePerms();
+  const canExport = can(CAP.EXPORT_REPORTS);
 
   const [isLoading, setIsLoading] = React.useState(true);
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -159,7 +163,7 @@ export default function Reports() {
       const q = searchQuery.trim().toLowerCase();
       result = result.filter((p) => {
         const name = String(p.name || "").toLowerCase();
-        const assigneeName = getUserName(p.assignedTo).toLowerCase();
+        const assigneeName = getUserName(p.assigneeId).toLowerCase();
         return name.includes(q) || assigneeName.includes(q);
       });
     }
@@ -268,6 +272,10 @@ export default function Reports() {
   }, [isExportMenuOpen]);
 
   const exportReports = async (format) => {
+    if (!canExport) {
+      notify({ type: "error", title: "Access denied", message: "You are not allowed to export reports" });
+      return;
+    }
     setIsExportMenuOpen(false);
     setIsExporting(true);
 
@@ -312,11 +320,16 @@ export default function Reports() {
           </div>
 
           <div style={{ position: "relative" }} data-export-menu>
-            <button onClick={() => setIsExportMenuOpen((v) => !v)} style={styles.exportBtn} disabled={isExporting}>
+            <button
+              onClick={() => setIsExportMenuOpen((v) => !v)}
+              style={styles.exportBtn}
+              disabled={isExporting || !canExport}
+              title={!canExport ? "You do not have permission to export" : ""}
+            >
               {isExporting ? "Exporting..." : "Export"} ▾
             </button>
 
-            {isExportMenuOpen ? (
+            {isExportMenuOpen && canExport ? (
               <div style={styles.exportMenu}>
                 <button style={styles.exportItem} onClick={() => exportReports("csv")}>
                   Export as CSV
@@ -380,7 +393,7 @@ export default function Reports() {
                     <div style={{ fontWeight: 950, fontSize: 16 }}>{p.name}</div>
                     <div style={{ display: "flex", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
                       <Badge text={String(p.status || "OTHER")} />
-                      <Badge text={String(p.department || "N/A")} tone="neutral" />
+                      <Badge text={String(p.category || "N/A")} tone="neutral" />
                     </div>
                   </div>
 
@@ -403,7 +416,7 @@ export default function Reports() {
                 </div>
 
                 <div style={{ marginTop: 10, color: "#6b7280", fontSize: 13 }}>
-                  Assigned to: <b style={{ color: "#111827" }}>{getUserName(p.assignedTo)}</b>
+                  Assigned to: <b style={{ color: "#111827" }}>{getUserName(p.assigneeId)}</b>
                 </div>
               </div>
             ))}
@@ -487,8 +500,8 @@ function exportCSV(projects, users) {
     name: p.name,
     status: p.status,
     progress: p.progress,
-    department: p.department || "",
-    assignedTo: userNameById.get(p.assignedTo) || "",
+    category: p.category || "",
+    assignedTo: userNameById.get(p.assigneeId) || "",
     startDate: p.startDate || "",
     endDate: p.endDate || p.deadline || "",
     updatedAt: p.updatedAt ? new Date(p.updatedAt).toISOString() : "",
