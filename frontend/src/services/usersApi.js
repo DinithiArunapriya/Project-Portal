@@ -1,7 +1,7 @@
 import { api } from "./apiClient";
 
 // Match backend roles
-export const USER_ROLES = ["SUPER_ADMIN", "MANAGER", "DEVELOPER", "QA", "DESIGNER", "HR"];
+export const USER_ROLES = ["EMMA", "EMILY", "MIKE", "ANNE", "JAKE", "JOHN", "FRED"]
 
 export async function listUsers() {
   return api.get("/users");

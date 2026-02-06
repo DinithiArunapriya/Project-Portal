@@ -93,18 +93,6 @@ export default function ProjectModal({ open, mode, initial, users = [], onClose,
               />
             </Field>
 
-            <Field label="Owner">
-              <select
-                value={form.ownerId}
-                onChange={(e) => setForm((s) => ({ ...s, ownerId: e.target.value }))}
-                style={styles.input}
-              >
-                <option value="unassigned">Unassigned</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>{u.name}</option>
-                ))}
-              </select>
-            </Field>
 
             <Field label="Assigned To">
               <select

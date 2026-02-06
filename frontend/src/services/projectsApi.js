@@ -2,7 +2,7 @@ import { api } from "./apiClient";
 
 export const PROJECT_STATUSES = ["PLANNING", "IN_PROGRESS", "ON_HOLD", "DONE"];
 export const PROJECT_PRIORITIES = ["LOW", "MEDIUM", "HIGH"];
-export const PROJECT_CATEGORIES = ["INTERNAL", "CLIENT", "MAINTENANCE", "OTHER"];
+export const PROJECT_CATEGORIES = ["MOBILE", "WEBSITE", "WEB APPLICATION", "OTHER"];
 
 export async function listProjects() {
   return api.get("/projects");
