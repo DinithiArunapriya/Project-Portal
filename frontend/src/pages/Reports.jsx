@@ -5,9 +5,13 @@ import { useNotify } from "../notifications/NotificationProvider";
 
 import { listProjects } from "../services/projectsApi";
 import { listUsers } from "../services/usersApi";
+import { usePerms } from "../auth/usePerms";
+import { CAP } from "../auth/permissions";
 
 export default function Reports() {
   const notify = useNotify();
+  const { can } = usePerms();
+  const canExport = can(CAP.EXPORT_REPORTS);
 
   const [isLoading, setIsLoading] = React.useState(true);
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -268,6 +272,10 @@ export default function Reports() {
   }, [isExportMenuOpen]);
 
   const exportReports = async (format) => {
+    if (!canExport) {
+      notify({ type: "error", title: "Access denied", message: "You are not allowed to export reports" });
+      return;
+    }
     setIsExportMenuOpen(false);
     setIsExporting(true);
 
@@ -312,11 +320,16 @@ export default function Reports() {
           </div>
 
           <div style={{ position: "relative" }} data-export-menu>
-            <button onClick={() => setIsExportMenuOpen((v) => !v)} style={styles.exportBtn} disabled={isExporting}>
+            <button
+              onClick={() => setIsExportMenuOpen((v) => !v)}
+              style={styles.exportBtn}
+              disabled={isExporting || !canExport}
+              title={!canExport ? "You do not have permission to export" : ""}
+            >
               {isExporting ? "Exporting..." : "Export"} ▾
             </button>
 
-            {isExportMenuOpen ? (
+            {isExportMenuOpen && canExport ? (
               <div style={styles.exportMenu}>
                 <button style={styles.exportItem} onClick={() => exportReports("csv")}>
                   Export as CSV

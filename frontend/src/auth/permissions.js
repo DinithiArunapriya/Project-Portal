@@ -54,11 +54,9 @@ export const ROLE_CAPS = {
   ]),
 
   HR: new Set([
-    // HR can view everything except settings + report export
-    CAP.VIEW_USERS,
+    // HR can only view & export reports
     CAP.VIEW_REPORTS,
-    CAP.EDIT_PROJECT_BASIC,
-    CAP.EDIT_TASK_BASIC,
+    CAP.EXPORT_REPORTS,
   ]),
 
   BUSINESS_ANALYST: new Set([

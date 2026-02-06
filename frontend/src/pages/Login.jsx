@@ -103,6 +103,27 @@ function groupUsersByRole(users) {
   }, {});
 }
 
+function redirectByRole(role, navigate) {
+  const r = String(role || "").trim().toUpperCase();
+  switch (r) {
+    case "SUPER_ADMIN":
+    case "MANAGER":
+      navigate("/dashboard");
+      return;
+    case "DEVELOPER":
+    case "QA":
+    case "DESIGNER":
+      navigate("/projects");
+      return;
+    case "HR":
+      navigate("/reports");
+      return;
+    default:
+      navigate("/dashboard");
+      return;
+  }
+}
+
 function StatCard({ value, label }) {
   return (
     <div style={styles.statCard}>
@@ -189,7 +210,7 @@ export default function Login() {
         message: `Welcome ${result?.user?.name || u.name} (${result?.user?.role || u.role})`,
       });
 
-      navigate("/dashboard");
+      redirectByRole(result?.user?.role || u.role, navigate);
     } catch (e) {
       notify({
         type: "error",

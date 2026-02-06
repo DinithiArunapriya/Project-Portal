@@ -31,7 +31,7 @@ const redirectByRole = (role, navigate) => {
       return;
 
     case "HR":
-      navigate("/users");
+      navigate("/reports");
       return;
 
     default:
