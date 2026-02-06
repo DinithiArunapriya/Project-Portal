@@ -17,7 +17,13 @@ async function login(req, res) {
   const user = await User.findOne({ email: String(email).toLowerCase().trim() });
   if (!user || user.isActive === false) return res.status(401).json({ message: "Invalid credentials" });
 
-  const ok = await bcrypt.compare(String(password), user.passwordHash);
+  let ok = await bcrypt.compare(String(password), user.passwordHash);
+  if (!ok && user.passwordHash === String(password)) {
+    // One-time migration for legacy records that stored plain passwords.
+    user.passwordHash = await bcrypt.hash(String(password), 10);
+    await user.save();
+    ok = true;
+  }
   if (!ok) return res.status(401).json({ message: "Invalid credentials" });
 
   const token = signToken(user);
@@ -37,4 +43,19 @@ async function login(req, res) {
   });
 }
 
-module.exports = { login };
+async function listDemoUsers(req, res) {
+  const users = await User.find({ isActive: { $ne: false } }).sort({ createdAt: -1 }).lean();
+  res.json(
+    users.map((u) => ({
+      id: u.id || u._id.toString(),
+      name: u.name,
+      email: u.email,
+      role: u.role,
+      department: u.department,
+      avatar: u.avatar || null,
+      createdAt: u.createdAt,
+    }))
+  );
+}
+
+module.exports = { login, listDemoUsers };

@@ -3,7 +3,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { useNotify } from "../notifications/NotificationProvider";
-import { loginWithEmail } from "../services/authApi";
+import { loginWithEmail, listDemoUsers } from "../services/authApi";
 
 const DEMO_USERS = [
   {
@@ -96,9 +96,10 @@ function initials(name) {
 }
 
 function groupUsersByRole(users) {
-  return users.reduce((acc, u) => {
-    acc[u.role] = acc[u.role] || [];
-    acc[u.role].push(u);
+  return (users || []).reduce((acc, u) => {
+    const key = String(u?.role || "").trim().toUpperCase() || "UNKNOWN";
+    acc[key] = acc[key] || [];
+    acc[key].push(u);
     return acc;
   }, {});
 }
@@ -181,7 +182,7 @@ function RoleCard({ roleKey, users, onPick }) {
             <div style={{ textAlign: "left", flex: 1, minWidth: 0 }}>
               <div style={styles.userName}>{u.name}</div>
               <div style={styles.userEmail}>{u.email}</div>
-              <div style={styles.userDept}>{u.dept}</div>
+              <div style={styles.userDept}>{u.department || u.dept || ""}</div>
             </div>
             <div style={{ fontWeight: 900, opacity: 0.45 }}>›</div>
           </button>
@@ -196,12 +197,48 @@ export default function Login() {
   const { login } = useAuth();
   const notify = useNotify();
 
-  const grouped = React.useMemo(() => groupUsersByRole(DEMO_USERS), []);
+  const [users, setUsers] = React.useState(DEMO_USERS);
+  const [loadingUsers, setLoadingUsers] = React.useState(true);
+  const [loadError, setLoadError] = React.useState("");
+  const [loginOpen, setLoginOpen] = React.useState(false);
+  const [loginUser, setLoginUser] = React.useState(null);
+  const [loginPassword, setLoginPassword] = React.useState("");
+  const [loginBusy, setLoginBusy] = React.useState(false);
+
+  React.useEffect(() => {
+    let alive = true;
+    (async () => {
+      setLoadingUsers(true);
+      setLoadError("");
+      try {
+        const data = await listDemoUsers();
+        if (!alive) return;
+        if (Array.isArray(data) && data.length) {
+          setUsers(data);
+        } else if (Array.isArray(data)) {
+          setUsers([]);
+        }
+      } catch (e) {
+        if (!alive) return;
+        setLoadError(e?.message || "Could not load users from server");
+        setUsers(DEMO_USERS);
+      } finally {
+        if (alive) setLoadingUsers(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const grouped = React.useMemo(() => groupUsersByRole(users), [users]);
   const roleCount = Object.keys(grouped).length;
 
-  const onPickUser = async (u) => {
+  const finishLogin = async (u, password) => {
+    if (!u?.email) return false;
     try {
-      const result = await loginWithEmail(u.email, u.password);
+      setLoginBusy(true);
+      const result = await loginWithEmail(u.email, password);
       login({ token: result?.token, user: result?.user });
 
       notify({
@@ -211,12 +248,36 @@ export default function Login() {
       });
 
       redirectByRole(result?.user?.role || u.role, navigate);
+      return true;
     } catch (e) {
       notify({
         type: "error",
         title: "Login failed",
         message: e?.message || "Could not sign in",
       });
+      return false;
+    } finally {
+      setLoginBusy(false);
+    }
+  };
+
+  const onPickUser = (u) => {
+    if (u?.password) {
+      finishLogin(u, u.password);
+      return;
+    }
+    setLoginUser(u);
+    setLoginPassword("");
+    setLoginOpen(true);
+  };
+
+  const onSubmitPassword = async (e) => {
+    e.preventDefault();
+    if (!loginUser?.email) return;
+    const ok = await finishLogin(loginUser, loginPassword);
+    if (ok) {
+      setLoginOpen(false);
+      setLoginPassword("");
     }
   };
 
@@ -240,9 +301,9 @@ export default function Login() {
           </div>
 
           <div style={styles.statsGrid}>
-            <StatCard value={String(DEMO_USERS.length)} label="Demo Users" />
+            <StatCard value={loadingUsers ? "…" : String(users.length)} label="Demo Users" />
             <StatCard value="5" label="Sample Projects" />
-            <StatCard value={String(roleCount)} label="User Roles" />
+            <StatCard value={loadingUsers ? "…" : String(roleCount)} label="User Roles" />
           </div>
 
           <div style={styles.whatTitle}>What You Can Explore</div>
@@ -264,6 +325,9 @@ export default function Login() {
           <div style={styles.rightPill}>DEMO ENVIRONMENT</div>
           <div style={styles.rightSub}>Select a role below to explore the platform with realistic sample data</div>
 
+          {loadError ? <div style={styles.warnText}>Could not load users from server. Showing fallback demo list.</div> : null}
+          {loadingUsers ? <div style={styles.loadingText}>Loading users…</div> : null}
+
           <div style={{ display: "grid", gap: 12, marginTop: 18 }}>
             <Accordion title="Demo Features & Capabilities" tone="info">
               <div style={styles.accText}>
@@ -279,9 +343,11 @@ export default function Login() {
               <div style={styles.accText}>
                 1) Pick a user card below
                 <br />
-                2) You will be redirected to the dashboard
+                2) Enter the user's password
                 <br />
-                3) Use sidebar navigation to explore features
+                3) You will be redirected to the dashboard
+                <br />
+                4) Use sidebar navigation to explore features
               </div>
             </Accordion>
           </div>
@@ -294,6 +360,9 @@ export default function Login() {
                 <RoleCard key={roleKey} roleKey={roleKey} users={grouped[roleKey]} onPick={onPickUser} />
               ) : null
             )}
+            {!loadingUsers && users.length === 0 ? (
+              <div style={styles.emptyText}>No users found. Create users or check your backend connection.</div>
+            ) : null}
           </div>
 
           <div style={styles.limitBox}>
@@ -312,6 +381,47 @@ export default function Login() {
           </div>
         </div>
       </div>
+
+      {loginOpen ? (
+        <div style={styles.modalBackdrop}>
+          <form onSubmit={onSubmitPassword} style={styles.modalCard}>
+            <div style={{ fontWeight: 950, fontSize: 18 }}>Enter Password</div>
+            <div style={{ color: "#6B7280", fontWeight: 700, marginTop: 6 }}>
+              {loginUser?.name || "User"} • {loginUser?.email || ""}
+            </div>
+
+            <div style={{ marginTop: 16 }}>
+              <div style={styles.labelSm}>Password</div>
+              <input
+                type="password"
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                style={styles.modalInput}
+                placeholder="Enter password"
+                autoFocus
+                required
+              />
+            </div>
+
+            <div style={styles.modalActions}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (loginBusy) return;
+                  setLoginOpen(false);
+                  setLoginPassword("");
+                }}
+                style={styles.modalSecondary}
+              >
+                Cancel
+              </button>
+              <button type="submit" style={styles.modalPrimary} disabled={loginBusy}>
+                {loginBusy ? "Signing in…" : "Sign in"}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -426,6 +536,32 @@ const styles = {
     letterSpacing: 0.5,
   },
   rightSub: { marginTop: 10, textAlign: "center", color: "#6B7280", fontWeight: 700 },
+  warnText: {
+    marginTop: 10,
+    padding: "8px 12px",
+    borderRadius: 10,
+    background: "#FEF3C7",
+    border: "1px solid #FDE68A",
+    color: "#92400E",
+    fontWeight: 800,
+    fontSize: 12,
+    textAlign: "center",
+  },
+  loadingText: {
+    marginTop: 8,
+    color: "#6B7280",
+    fontWeight: 800,
+    fontSize: 12,
+    textAlign: "center",
+  },
+  emptyText: {
+    padding: "10px 12px",
+    borderRadius: 12,
+    border: "1px dashed #E5E7EB",
+    color: "#6B7280",
+    fontWeight: 800,
+    textAlign: "center",
+  },
 
   accordion: {
     width: "100%",
@@ -502,5 +638,49 @@ const styles = {
     alignItems: "center",
     color: "#6D28D9",
     fontWeight: 800,
+  },
+
+  modalBackdrop: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(17,24,39,0.55)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+    zIndex: 50,
+  },
+  modalCard: {
+    width: "min(420px, 100%)",
+    background: "white",
+    borderRadius: 16,
+    padding: 20,
+    boxShadow: "0 20px 40px rgba(0,0,0,0.2)",
+  },
+  labelSm: { fontSize: 12, fontWeight: 900, color: "#374151", marginBottom: 6 },
+  modalInput: {
+    width: "100%",
+    padding: 12,
+    borderRadius: 12,
+    border: "1px solid #E5E7EB",
+    outline: "none",
+  },
+  modalActions: { display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 },
+  modalSecondary: {
+    padding: "10px 14px",
+    borderRadius: 10,
+    border: "1px solid #E5E7EB",
+    background: "white",
+    fontWeight: 900,
+    cursor: "pointer",
+  },
+  modalPrimary: {
+    padding: "10px 14px",
+    borderRadius: 10,
+    border: "none",
+    background: "#2563EB",
+    color: "white",
+    fontWeight: 900,
+    cursor: "pointer",
   },
 };

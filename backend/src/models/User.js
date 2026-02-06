@@ -1,6 +1,14 @@
 const mongoose = require("mongoose");
 
-const USER_ROLES = ["EMMA", "EMILY", "MIKE", "ANNE", "JAKE", "JOHN", "FRED"];
+const USER_ROLES = [
+  "SUPER_ADMIN",
+  "MANAGER",
+  "DEVELOPER",
+  "DESIGNER",
+  "QA",
+  "HR",
+  "BUSINESS_ANALYST",
+];
 
 const userSchema = new mongoose.Schema(
   {
