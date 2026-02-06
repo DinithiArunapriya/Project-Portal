@@ -1,0 +1,28 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [ main, upgrade/java-21 ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        java-version: [ '21' ]
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK ${{ matrix.java-version }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java-version }}
+      - name: Build backend
+        working-directory: backend
+        run: |
+          ./mvnw -v
+          ./mvnw -DskipTests package
