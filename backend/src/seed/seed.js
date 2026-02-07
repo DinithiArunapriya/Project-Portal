@@ -74,31 +74,14 @@ const DEMO_TASKS = [
   await connectDB(process.env.MONGO_URI);
 
   for (const u of DEMO_USERS) {
-    const email = String(u.email || "").toLowerCase().trim();
-    const exists = await User.findOne({ $or: [{ email }, { id: u.id }] });
-
-    if (exists) {
-      exists.id = u.id || exists.id;
-      exists.name = u.name;
-      exists.email = email;
-      exists.role = u.role;
-      exists.department = u.department;
-      exists.isActive = true;
-
-      // Only set password if missing (don't overwrite real users)
-      if (!exists.passwordHash && u.password) {
-        exists.passwordHash = await bcrypt.hash(u.password, 10);
-      }
-
-      await exists.save();
-      continue;
-    }
+    const exists = await User.findOne({ email: u.email });
+    if (exists) continue;
 
     const passwordHash = await bcrypt.hash(u.password, 10);
     await User.create({
       id: u.id,
       name: u.name,
-      email,
+      email: u.email,
       passwordHash,
       role: u.role,
       department: u.department,

@@ -21,11 +21,10 @@ async function createUser(req, res) {
   if (!name || !email || !password) return res.status(400).json({ message: "name, email, password required" });
 
   const r = role && USER_ROLES.includes(role) ? role : "DEVELOPER";
-  const cleanId = String(id || "").trim() || undefined;
   const passwordHash = await bcrypt.hash(String(password), 10);
 
   const created = await User.create({
-    id: cleanId,
+    id: id || undefined,
     name,
     email: String(email).toLowerCase().trim(),
     passwordHash,
@@ -48,15 +47,11 @@ async function createUser(req, res) {
 
 async function updateUser(req, res) {
   const userId = req.params.id;
-  const { id, name, email, password, role, department, isActive, avatar } = req.body || {};
+  const { name, email, password, role, department, isActive, avatar } = req.body || {};
 
   const user = await User.findOne({ $or: [{ id: userId }, { _id: userId }] });
   if (!user) return res.status(404).json({ message: "User not found" });
 
-  if (id != null) {
-    const cleanId = String(id || "").trim() || undefined;
-    user.id = cleanId;
-  }
   if (name != null) user.name = name;
   if (email != null) user.email = String(email).toLowerCase().trim();
   if (role != null && USER_ROLES.includes(role)) user.role = role;
