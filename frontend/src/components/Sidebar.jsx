@@ -71,7 +71,9 @@ const styles = {
     fontWeight: 900,
     border: "1px solid transparent",
   },
-  itemActive: { background: "#111827", color: "white", borderColor: "#111827" },
+  // Use full border shorthand so we don't mix `border` and `borderColor` which causes
+  // React to warn during rerenders.
+  itemActive: { background: "#111827", color: "white", border: "1px solid #111827" },
   sectionLabel: {
     marginTop: 10,
     marginBottom: 6,

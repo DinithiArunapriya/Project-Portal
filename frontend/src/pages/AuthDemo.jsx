@@ -251,13 +251,13 @@ const handleProjectAction = () => {
               ) : null}
 
               {hasPermission("projects", "update") ? (
-                <button style={{ ...styles.btn, background: "#2563eb", color: "white", borderColor: "#2563eb" }}>
+                <button style={{ ...styles.btn, background: "#2563eb", color: "white", border: "1px solid #2563eb" }}>
                   ✎ Edit Projects
                 </button>
               ) : null}
 
               {hasPermission("projects", "delete") ? (
-                <button style={{ ...styles.btn, background: "#dc2626", color: "white", borderColor: "#dc2626" }}>
+                <button style={{ ...styles.btn, background: "#dc2626", color: "white", border: "1px solid #dc2626" }}>
                   🗑 Delete Projects
                 </button>
               ) : null}
@@ -274,13 +274,13 @@ const handleProjectAction = () => {
 
             <div style={styles.btnRow}>
               {canAccessResource("users") ? (
-                <button style={{ ...styles.btn, background: "#16a34a", color: "white", borderColor: "#16a34a" }}>
+                <button style={{ ...styles.btn, background: "#16a34a", color: "white", border: "1px solid #16a34a" }}>
                   👥 View Users
                 </button>
               ) : null}
 
               {hasPermission("users", "update") ? (
-                <button style={{ ...styles.btn, background: "#7c3aed", color: "white", borderColor: "#7c3aed" }}>
+                <button style={{ ...styles.btn, background: "#7c3aed", color: "white", border: "1px solid #7c3aed" }}>
                   🧑‍💼 Edit User Roles
                 </button>
               ) : null}
@@ -297,13 +297,13 @@ const handleProjectAction = () => {
 
             <div style={styles.btnRow}>
               {canAccessResource("reports") ? (
-                <button style={{ ...styles.btn, background: "#4f46e5", color: "white", borderColor: "#4f46e5" }}>
+                <button style={{ ...styles.btn, background: "#4f46e5", color: "white", border: "1px solid #4f46e5" }}>
                   📊 View Reports
                 </button>
               ) : null}
 
               {hasPermission("reports", "create") ? (
-                <button style={{ ...styles.btn, background: "#f97316", color: "white", borderColor: "#f97316" }}>
+                <button style={{ ...styles.btn, background: "#f97316", color: "white", border: "1px solid #f97316" }}>
                   ➕ Create Reports
                 </button>
               ) : null}
