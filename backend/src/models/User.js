@@ -12,7 +12,8 @@ const USER_ROLES = [
 
 const userSchema = new mongoose.Schema(
   {
-    id: { type: String, index: true, unique: true }, // optional custom id
+    // Optional custom id. Sparse unique allows many docs with no id.
+    id: { type: String, index: true, unique: true, sparse: true, trim: true },
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true, index: true, lowercase: true, trim: true },
     passwordHash: { type: String, required: true },
