@@ -8,7 +8,9 @@ const processes = [
 let shuttingDown = false;
 
 function startProcess({ name, cmd, args }) {
-  const child = spawn(cmd, args, { stdio: "inherit", shell: true });
+  // Avoid using `shell: true` to prevent DEP0190 warning (passing args with shell
+  // can be insecure). Pass command and args directly to spawn.
+  const child = spawn(cmd, args, { stdio: "inherit" });
 
   child.on("error", (err) => {
     console.error(`[dev] ${name} failed to start:`, err.message || err);
